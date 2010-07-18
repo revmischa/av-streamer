@@ -64,6 +64,48 @@ has 'frame_decode_delegate' => (
     does => 'Video::FFmpeg::FrameDecoder::FrameHandler',
 );
 
+has 'dest_pix_format' => (
+    is => 'rw',
+    isa => 'Str',
+    default => 'PIX_FMT_YUV420P',
+);
+
+sub width {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_width($self->codec_ctx);
+}
+
+sub height {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_height($self->codec_ctx);
+}
+
+sub bitrate {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_bitrate($self->codec_ctx);
+}
+
+# time base denominator
+sub rate_den {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_rate_den($self->codec_ctx);
+}
+
+# time base numerator
+sub rate_num {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_rate_num($self->codec_ctx);
+}
+
+sub pixfmt {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_pixfmt($self->codec_ctx);
+}
+
+sub gopsize {
+    my ($self) = @_;
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_gopsize($self->codec_ctx);
+}
 
 # start decoding frames
 # opts: callback, delegate
@@ -109,15 +151,18 @@ sub decode_frames {
             seq_num => $seq_num,
         );
 
-        $decoded_cb->($frame) if $decoded_cb;
-        $decoded_delegate->frame_decoded($frame) if $decoded_delegate;
+        $decoded_cb->($self, $frame) if $decoded_cb;
+        $decoded_delegate->frame_decoded($self, $frame) if $decoded_delegate;
     };
     
+    $decoded_delegate->decoding_started($self) if $decoded_delegate;
+    
     # mega awesome frame decoding function
-    return Video::FFmpeg::FrameDecoder::ffv_fd_decode_frames(
+    my $ret = Video::FFmpeg::FrameDecoder::ffv_fd_decode_frames(
         $self->format_ctx,
         $self->codec_ctx,
         $self->stream_index,
+        $self->dest_pix_format_raw,
         
         $self->source_frame,
         $self->dest_frame,
@@ -126,6 +171,27 @@ sub decode_frames {
         $frame_count,
         $decoded,
     );
+    
+    $decoded_delegate->decoding_finished($self) if $decoded_delegate;
+    
+    return $ret;
+}
+
+sub dest_pix_format_raw {
+    my ($self) = @_;
+
+    # determine pix_format
+    # lazy hack for now, should export PixelFormat enum
+    my $pix_format = $self->dest_pix_format;
+    if ($pix_format eq 'PIX_FMT_RGB24') {
+        $pix_format = 2;
+    } elsif ($pix_format eq 'PIX_FMT_YUV420P') {
+        $pix_format = 0;
+    } else {
+        croak "Sorry, I don't know the pixel format $pix_format. This will be fixed in a later version";
+    }
+    
+    return $pix_format;
 }
 
 # allocate buffer and frames for decoding video frames to RGB
@@ -144,6 +210,7 @@ sub prepare_video_frame_decoding {
     my $frame_decode_buffer = Video::FFmpeg::FrameDecoder::ffv_fd_alloc_frame_buffer(
         $self->codec_ctx,
         $dst_frame,
+        $self->dest_pix_format_raw,
     );
     $self->frame_decode_buffer($frame_decode_buffer);
     

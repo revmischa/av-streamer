@@ -111,8 +111,6 @@ sub open_video_stream_codec {
         stream_index => $stream_index,
     );
     push @{ $self->open_codecs }, $codec_ctx;
-    
-    $codec_ctx->prepare_video_frame_decoding;
 
     return $codec_ctx;
 }

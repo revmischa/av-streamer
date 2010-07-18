@@ -16,7 +16,7 @@ ok($codec_ctx, "opened codec decoder");
 
 my $cb_called;
 my $frame_decoded_cb = sub {
-    my ($frame) = @_;
+    my ($codec_ctx, $frame) = @_;
     
     $cb_called = 1;
 };
