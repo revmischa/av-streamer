@@ -28,23 +28,33 @@ has 'seq_num' => (
     required => 1,
 );
 
-# return address of line of pixel data, it will be width*3 bytes long
+# return address of line of pixel data, it will be line_size bytes long
 sub get_line {
     my ($self, $y) = @_;
     
     return Video::FFmpeg::FrameDecoder::ffv_fd_get_frame_line_pointer($self->frame, $y);
 }
 
+sub line_size {
+    my ($self) = @_;
+    
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_line_size($self->frame, $self->width);
+}
+
 sub frame_size {
     my ($self) = @_;
     
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_frame_size($self->frame, $self->width, $self->height);
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_frame_size(
+        $self->frame, $self->line_size, $self->height,
+    );
 }
 
 sub pixel_data {
     my ($self) = @_;
     
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_frame_data($self->frame, $self->width, $self->height);
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_frame_data(
+        $self->frame, $self->width, $self->height, $self->line_size, $self->frame_size,
+    );
 }
 
 __PACKAGE__->meta->make_immutable;

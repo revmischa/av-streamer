@@ -287,37 +287,42 @@ unsigned int y;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_frame_size(frame, width, height)
+ffv_fd_get_frame_size(frame, line_size, height)
 FD_Frame* frame;
-unsigned int width;
+unsigned int line_size;
 unsigned int height;
     CODE:
     {
-        /*unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
-            + frame->linesize[2] + frame->linesize[3] * width;*/
-
-        unsigned int line_size = width * 3;        
         unsigned int frame_size = line_size * height;
 
         RETVAL = frame_size;
     }
     OUTPUT: RETVAL
+    
+unsigned int
+ffv_fd_get_line_size(frame, width)
+FD_Frame* frame;
+unsigned int width;
+    CODE:
+    {
+        unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
+            + frame->linesize[2] + frame->linesize[3] * width;
+
+        RETVAL = line_size;
+    }
+    OUTPUT: RETVAL
 
 SV*
-ffv_fd_get_frame_data(frame, width, height)
+ffv_fd_get_frame_data(frame, width, height, line_size, frame_size)
 FD_Frame* frame;
 unsigned int width;
 unsigned int height;
+unsigned int line_size;
+unsigned int frame_size;
     CODE:
     {
         char *buf, *offset;
         unsigned int y;
-        
-        /*unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
-            + frame->linesize[2] + frame->linesize[3] * width;*/
-
-        unsigned int line_size = width * 3;        
-        unsigned int frame_size = line_size * height;
 
         buf = malloc(frame_size);
         bzero(buf, frame_size);

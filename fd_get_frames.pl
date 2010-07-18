@@ -10,7 +10,7 @@ use Moose;
 use Video::FFmpeg::FrameDecoder::App::GetFrames;
 
 my $uri = shift @ARGV
-    or die "Usage: $0 /path/to/file";
+    or die "Usage: $0 /path/to/file\n";
 
 my $gf = Video::FFmpeg::FrameDecoder::App::GetFrames->new_with_options(
     stream_uri => $uri,
