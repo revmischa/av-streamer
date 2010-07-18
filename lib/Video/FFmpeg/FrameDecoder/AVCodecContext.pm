@@ -91,17 +91,24 @@ sub start_decoding {
 sub decode_frames {
     my ($self, $frame_count) = @_;
     
-    return unless $frame_count;
-
     $self->prepare_video_frame_decoding;
     
     my $decoded_cb = $self->frame_decode_callback;
     my $decoded_delegate = $self->frame_decode_delegate;
+    my $dest_frame = $self->dest_frame;
     
     # this is called each time a frame is decoded
     my $decoded = sub {
-        my ($frame) = @_;
-                
+        my ($seq_num, $w, $h) = @_;
+
+        # create a Frame instance representing it
+        my $frame = Video::FFmpeg::FrameDecoder::Frame->new(
+            frame   => $dest_frame,
+            width   => $w,
+            height  => $h,
+            seq_num => $seq_num,
+        );
+
         $decoded_cb->($frame) if $decoded_cb;
         $decoded_delegate->frame_decoded($frame) if $decoded_delegate;
     };

@@ -3,9 +3,10 @@ package Video::FFmpeg::FrameDecoder;
 use 5.006000;
 
 use Moose;
-#extends 'Moose::Object', 'Video::FFmpeg';
 use namespace::autoclean;
+
 use Video::FFmpeg::FrameDecoder::AVCodecContext;
+use Video::FFmpeg::FrameDecoder::Frame;
 
 our $VERSION = '0.01';
 
@@ -61,8 +62,7 @@ sub open_uri {
     $self->uri($uri);
 
     my $ctx = ffv_fd_open_uri($uri);
-    
-    unless ($ctx) {
+    if (! $ctx || ! ref $ctx) {
         $self->debug("Failed to open $uri");
         return;
     }

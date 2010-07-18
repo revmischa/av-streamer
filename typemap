@@ -1,7 +1,7 @@
 TYPEMAP
 FD_AVFormatCtx *                 T_PTROBJ_SPECIAL
 FD_AVCodecCtx  *                 T_PTROBJ_SPECIAL
-FD_AVFrame     *                 T_PTROBJ_SPECIAL
+FD_Frame       *                 T_PTROBJ_SPECIAL
 FD_FrameBuffer *                 T_PTROBJ_SPECIAL
 
 INPUT

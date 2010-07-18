@@ -14,7 +14,7 @@
 #pragma mark types
 typedef struct AVFormatContext FD_AVFormatCtx;
 typedef struct AVCodecContext  FD_AVCodecCtx;
-typedef struct AVFrame         FD_AVFrame;
+typedef struct AVFrame         FD_Frame;
 typedef short bool_t;
 typedef uint8_t                FD_FrameBuffer;
 
@@ -111,7 +111,7 @@ FD_AVFormatCtx* ctx;
     }
     OUTPUT: RETVAL
 
-FD_AVFrame*
+FD_Frame*
 ffv_fd_alloc_frame()
     CODE:
     {
@@ -122,7 +122,7 @@ ffv_fd_alloc_frame()
 
 void
 ffv_fd_dealloc_frame(frame)
-FD_AVFrame* frame;
+FD_Frame* frame;
     CODE:
     {
         /* dellocate frame storage */
@@ -141,7 +141,7 @@ FD_FrameBuffer* buf;
 FD_FrameBuffer*
 ffv_fd_alloc_frame_buffer(codec_ctx, dst_frame)
 FD_AVCodecCtx* codec_ctx;
-FD_AVFrame* dst_frame;
+FD_Frame* dst_frame;
     CODE:
     {
         unsigned int size;
@@ -208,8 +208,8 @@ ffv_fd_decode_frames(format_ctx, codec_ctx, stream_index, src_frame, dst_frame, 
 FD_AVFormatCtx* format_ctx;
 FD_AVCodecCtx* codec_ctx;
 unsigned int stream_index;
-FD_AVFrame* src_frame;
-FD_AVFrame* dst_frame;
+FD_Frame* src_frame;
+FD_Frame* dst_frame;
 FD_FrameBuffer* dst_frame_buffer;
 unsigned int frame_count;
 CV* decoded_cb;
@@ -252,7 +252,8 @@ CV* decoded_cb;
                 codec_ctx->height, dst_frame->data, dst_frame->linesize);
                 
             /* we now have a decoded frame */
-            if (++frame > frame_count)
+            frame++;
+            if (frame_count && frame > frame_count)
                 break;
             
             /* call perl CV callback */
@@ -260,7 +261,9 @@ CV* decoded_cb;
         	ENTER;
         	SAVETMPS;
         	PUSHMARK(SP);
-        	XPUSHs( sv_2mortal( newSViv( frame )));
+        	XPUSHs( sv_2mortal( newSVuv( frame )));
+        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->width )));
+        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->height )));
         	PUTBACK;
 
         	call_sv( decoded_cb, G_DISCARD );
@@ -270,6 +273,65 @@ CV* decoded_cb;
         }
         
         av_free_packet(&packet);
+    }
+    OUTPUT: RETVAL
+
+char*
+ffv_fd_get_frame_line_pointer(frame, y)
+FD_Frame* frame;
+unsigned int y;
+    CODE:
+    {
+        RETVAL = frame->data[0] + y * frame->linesize[0];
+    }
+    OUTPUT: RETVAL
+
+unsigned int
+ffv_fd_get_frame_size(frame, width, height)
+FD_Frame* frame;
+unsigned int width;
+unsigned int height;
+    CODE:
+    {
+        /*unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
+            + frame->linesize[2] + frame->linesize[3] * width;*/
+
+        unsigned int line_size = width * 3;        
+        unsigned int frame_size = line_size * height;
+
+        RETVAL = frame_size;
+    }
+    OUTPUT: RETVAL
+
+SV*
+ffv_fd_get_frame_data(frame, width, height)
+FD_Frame* frame;
+unsigned int width;
+unsigned int height;
+    CODE:
+    {
+        char *buf, *offset;
+        unsigned int y;
+        
+        /*unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
+            + frame->linesize[2] + frame->linesize[3] * width;*/
+
+        unsigned int line_size = width * 3;        
+        unsigned int frame_size = line_size * height;
+
+        buf = malloc(frame_size);
+        bzero(buf, frame_size);
+        
+        offset = buf;
+        for ( y = 0; y < height; y++ ) {
+            memcpy(offset, frame->data[0] + y * frame->linesize[0], line_size);
+            offset += line_size;
+        }
+
+        SV *ret = newSVpv(buf, frame_size);
+        free(buf);
+        
+        RETVAL = ret;
     }
     OUTPUT: RETVAL
 
