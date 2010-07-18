@@ -58,7 +58,7 @@ after 'decoding_started' => sub {
 after 'decoding_finished' => sub {
     my ($self, $codec_ctx) = @_;
     
-    #Video::FFmpeg::FrameDecoder::ffv_fd_write_trailer($self->output_context);
+    Video::FFmpeg::FrameDecoder::ffv_fd_write_trailer($self->output_context);
 
     Video::FFmpeg::FrameDecoder::ffv_fd_close_video_stream(
             $self->output_context,
