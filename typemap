@@ -1,0 +1,19 @@
+TYPEMAP
+FD_AVFormatCtx *                 T_PTROBJ_SPECIAL
+FD_AVCodecCtx  *                 T_PTROBJ_SPECIAL
+FD_AVFrame     *                 T_PTROBJ_SPECIAL
+FD_FrameBuffer *                 T_PTROBJ_SPECIAL
+
+INPUT
+T_PTROBJ_SPECIAL
+        if (sv_derived_from($arg, \"${(my $ntt=$ntype)=~s/_/::/g;$ntt=~s/Ptr$//;\$ntt}\")) {
+           IV tmp = SvIV((SV*)SvRV($arg));
+           $var = ($type) tmp;
+        } else {
+          croak(\"$var is not of type ${(my $ntt=$ntype)=~s/_/::/g;$ntt=~s/Ptr$//;\$ntt}\");
+        };
+
+OUTPUT
+T_PTROBJ_SPECIAL
+        sv_setref_pv($arg, \"${(my $ntt=$ntype)=~s/_/::/g;$ntt=~s/Ptr$//;\$ntt}\",
+                           (void*)$var);

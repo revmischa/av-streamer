@@ -1,0 +1,34 @@
+Video-FFmpeg-FrameDecoder
+======================================
+
+This module attempts to provide a usable, high-level 
+interface to reading video frames with FFmpeg.
+
+This module requires FFmpeg development libraries, preferably >= 0.6
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+
+ACKNOWLEDGEMENTS
+
+This library makes liberal use of code copied from Max Vohra's Video::FFmpeg 
+and Martin Boehm's avcodec sample application.
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2010 by Mischa Spiegelmock
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.10.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+
