@@ -441,8 +441,6 @@ FD_AVFormatCtx* ctx;
     {
         unsigned int i;
         
-        av_write_trailer(ctx);
-        
         /* free streams */
         for (i = 0; i < ctx->nb_streams; i++) {
             av_freep(&ctx->streams[i]->codec);
