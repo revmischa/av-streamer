@@ -17,6 +17,8 @@ WriteMakefile(
     PREREQ_PM      => {
         'ExtUtils::PkgConfig' => 0,
         'MooseX::NonMoose' => 0,
+        'MooseX::Getopt' => 0,
+        'namespace::autoclean' => 0,
         'Video::FFmpeg' => 0,
     },
 

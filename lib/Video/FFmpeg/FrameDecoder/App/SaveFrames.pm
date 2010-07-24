@@ -10,6 +10,9 @@ has 'file_name' => (
     is => 'rw',
     isa => 'Str',
     default => 'stream_capture',
+    cmd_flag => 'name',
+    cmd_aliases => 'n',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
 sub frame_decoded {

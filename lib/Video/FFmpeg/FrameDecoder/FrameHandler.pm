@@ -1,6 +1,7 @@
 package Video::FFmpeg::FrameDecoder::FrameHandler;
 
 use Moose::Role;
+    
 use Video::FFmpeg::FrameDecoder;
 
 # how many frames to decode, 0 for all
@@ -8,6 +9,9 @@ has 'frame_count' => (
     is => 'rw',
     isa => 'Int',
     default => 0,
+    cmd_flag => 'framecount',
+    cmd_aliases => 'f',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
 # file name or stream URI
@@ -22,6 +26,8 @@ has 'debug' => (
     is => 'rw',
     isa => 'Bool',
     default => 0,
+    cmd_aliases => 'd',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
 # pixel format of destination

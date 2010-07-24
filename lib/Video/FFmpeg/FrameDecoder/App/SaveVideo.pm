@@ -15,6 +15,14 @@ has 'file_name' => (
     required => 1,
 );
 
+has 'dest_bitrate' => (
+    is => 'rw',
+    isa => 'Int',
+    cmd_flag => 'bitrate',
+    cmd_aliases => 'b',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
+);
+
 has 'output_context' => (
     is => 'rw',
 );
@@ -34,15 +42,18 @@ after 'decoding_started' => sub {
         
     $self->output_context($output_context);
     
+    my $bitrate = $self->dest_bitrate || $codec_ctx->bitrate;
+    
     my $output_video_stream =
     Video::FFmpeg::FrameDecoder::ffv_fd_new_output_video_stream(
         $output_context,
         $codec_ctx->width,
         $codec_ctx->height,
-        $codec_ctx->bitrate,
+        $bitrate,
         $codec_ctx->rate_num,
-#        $codec_ctx->rate_den,
-        29,
+        $codec_ctx->rate_den,
+#        5,
+#        20,
         $codec_ctx->pixfmt,
         $codec_ctx->gopsize,
     );

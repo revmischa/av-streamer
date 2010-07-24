@@ -4,19 +4,20 @@
 #   or stream.
 
 # Options:
-#   --frame_count N: only capture N frames
-#   --debug: turn out additional output
+#   --framecount/-f N: only capture N frames
+#   --bitrate/-b N
+#   --debug/-d: turn out additional output
 
 use Moose;
 use Video::FFmpeg::FrameDecoder::App::SaveVideo;
 
 my $uri = shift @ARGV
-    or die "$0: no input file specified\n";
+    or usage("Error: no input file specified");
     
 my $out = shift @ARGV
-    or die "$0: no output file specified.\n";
+    or usage("Error: no output file specified.");
     
-die "Output file missing extension\n"
+usage("Output file missing extension")
     unless $out =~ /\.\w+$/;
 
 my $gf = Video::FFmpeg::FrameDecoder::App::SaveFrames->new_with_options(
@@ -25,3 +26,8 @@ my $gf = Video::FFmpeg::FrameDecoder::App::SaveFrames->new_with_options(
 );
 
 $gf->run;
+
+sub usage {
+    my ($err) = @_;
+    die "$err\nUsage: $0 [--framecount N] [--debug] [--bitrate 400000] inputfile.ext outputfile.ext\n";
+}
