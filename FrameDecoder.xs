@@ -300,14 +300,14 @@ FD_AVCodecCtx* c;
     OUTPUT: RETVAL
     
 int
-ffv_fd_get_codec_ctx_rate_den(c)
+ffv_fd_get_codec_ctx_base_den(c)
 FD_AVCodecCtx* c;
     CODE:
         RETVAL = c->time_base.den;
     OUTPUT: RETVAL
 
 int
-ffv_fd_get_codec_ctx_rate_num(c)
+ffv_fd_get_codec_ctx_base_num(c)
 FD_AVCodecCtx* c;
     CODE:
         RETVAL = c->time_base.num;
@@ -466,25 +466,23 @@ FD_AVFormatCtx* ctx;
     }    
 
 FD_AVStream*
-ffv_fd_new_output_video_stream(ctx, width, height, bitrate, rate_num, rate_den, pixfmt, gopsize)
+ffv_fd_new_output_video_stream(ctx, width, height, bitrate, base_num, base_den, pixfmt, gopsize)
 FD_AVFormatCtx* ctx;
 unsigned int width;
 unsigned int height;
 unsigned int bitrate;
-int rate_num;
-int rate_den;
+int base_num;
+int base_den;
 int pixfmt;
 unsigned int gopsize;
     CODE:
     {
         FD_AVStream *vs = NULL;
         RETVAL = NULL;
+        int i;
 
         pixfmt = FD_DEFAULT_PIXFMT;
-        
-        printf("\nwidth: %d, height: %d, bitrate: %u, num: %i, den: %i, pixfmt: %d, gopsize: %d\n",
-            width, height, bitrate, rate_num, rate_den, pixfmt, gopsize);
-        
+                
         if (ctx->oformat->video_codec == CODEC_ID_NONE) {
             return;
         }
@@ -494,6 +492,12 @@ unsigned int gopsize;
         if (! vs) {
             return;
         }
+        
+        vs->stream_copy = 1;
+        
+        printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
+            width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);
+
 
         c = vs->codec;
         c->codec_id = ctx->oformat->video_codec;
@@ -506,13 +510,14 @@ unsigned int gopsize;
         c->width = width;
         c->height = height;
         
-        c->time_base.den = rate_den;
-        c->time_base.num = rate_num;
+        i = av_gcd(base_num, base_den);
+        c->time_base = (AVRational){ base_num / i, base_den / i };
+        
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
         c->pix_fmt = pixfmt;
 
         if (c->codec_id == CODEC_ID_MPEG1VIDEO) {
-            c->mb_decision=2;
+            c->mb_decision = 2;
         }
 
         /* some formats want stream headers to be separate */

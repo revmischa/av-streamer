@@ -5,7 +5,7 @@ use 5.006000;
 use Moose;
 use namespace::autoclean;
 
-use Video::FFmpeg::FrameDecoder::AVCodecContext;
+use Video::FFmpeg::FrameDecoder::CodecContext;
 use Video::FFmpeg::FrameDecoder::Frame;
 
 our $VERSION = '0.01';
@@ -105,7 +105,7 @@ sub open_video_stream_codec {
     }
 
     # we now have an active codec context.
-    my $codec_ctx = new Video::FFmpeg::FrameDecoder::AVCodecContext(
+    my $codec_ctx = new Video::FFmpeg::FrameDecoder::CodecContext(
         codec_ctx    => $_codec_ctx,
         format_ctx   => $self->ctx,
         stream_index => $stream_index,

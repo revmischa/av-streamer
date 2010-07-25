@@ -1,4 +1,4 @@
-package Video::FFmpeg::FrameDecoder::AVCodecContext;
+package Video::FFmpeg::FrameDecoder::CodecContext;
 
 use Moose;
 use namespace::autoclean;
@@ -86,15 +86,15 @@ sub bitrate {
 }
 
 # time base denominator
-sub rate_den {
+sub base_den {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_rate_den($self->codec_ctx);
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_base_den($self->codec_ctx);
 }
 
 # time base numerator
-sub rate_num {
+sub base_num {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_rate_num($self->codec_ctx);
+    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_base_num($self->codec_ctx);
 }
 
 sub pixfmt {
