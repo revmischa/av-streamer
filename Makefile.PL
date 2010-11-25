@@ -19,7 +19,6 @@ WriteMakefile(
         'MooseX::NonMoose' => 0,
         'MooseX::Getopt' => 0,
         'namespace::autoclean' => 0,
-        'Video::FFmpeg' => 0,
     },
 
     LIBS           => ["-lswscale $lavf_lib"],

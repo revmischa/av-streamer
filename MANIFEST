@@ -1,6 +1,11 @@
+fd_save_frames.pl
+fd_save_video.pl
 FrameDecoder.xs
 lib/Video/FFmpeg/FrameDecoder.pm
-lib/Video/FFmpeg/FrameDecoder/AVCodecContext.pm
+lib/Video/FFmpeg/FrameDecoder/App/SaveFrames.pm
+lib/Video/FFmpeg/FrameDecoder/App/SaveVideo.pm
+lib/Video/FFmpeg/FrameDecoder/CodecContext.pm
+lib/Video/FFmpeg/FrameDecoder/Frame.pm
 lib/Video/FFmpeg/FrameDecoder/FrameHandler.pm
 Makefile.PL
 MANIFEST
