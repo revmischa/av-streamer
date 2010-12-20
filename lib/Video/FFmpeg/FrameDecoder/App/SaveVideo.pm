@@ -9,10 +9,13 @@ use Carp qw/croak/;
 
 use Video::FFmpeg::FrameDecoder;
 
-has 'file_name' => (
+has 'output_file_name' => (
     is => 'rw',
     isa => 'Str',
     required => 1,
+    cmd_flag => 'output',
+    cmd_aliases => 'o',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
 has 'dest_bitrate' => (
@@ -20,6 +23,14 @@ has 'dest_bitrate' => (
     isa => 'Int',
     cmd_flag => 'bitrate',
     cmd_aliases => 'b',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
+);
+
+has 'output_format' => (
+    is => 'rw',
+    isa => 'Str',
+    cmd_flag => 'format',
+    cmd_aliases => 'f',
     metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
@@ -34,12 +45,27 @@ has 'output_video_stream' => (
 # create output context and output streams
 after 'decoding_started' => sub {
     my ($self, $codec_ctx) = @_;
-        
-    my $output_context = 
-    Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->file_name)
-        or croak "Unable to create an output context for " . $self->file_name . 
-        ". Please specify a file name with a supported extension.";
-        
+
+    my $output_context;
+
+    if ($self->output_format) {
+        # specify format shortname
+        $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_format);
+        unless ($output_context) {
+            warn "Failed to create context for format '" . $self->output_format . "'\n";
+        }
+    }
+
+    unless ($output_context) {
+        # try to guess format from file extension
+        $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_file_name);
+    }
+
+    unless ($output_context) {
+        die "Unable to create an output context for " . $self->output_file_name . 
+            ". Please specify a file name with a supported extension.\n";
+    }
+
     $self->output_context($output_context);
     
     my $bitrate = $self->dest_bitrate || $codec_ctx->bitrate;
@@ -57,7 +83,7 @@ after 'decoding_started' => sub {
         $codec_ctx->pixfmt,
         $codec_ctx->gopsize,
     );
-    die "Unable to create output video stream for " . $self->file_name
+    die "Unable to create output video stream for " . $self->output_file_name
         if ! $output_video_stream || ! ref $output_video_stream;
 
     $self->output_video_stream($output_video_stream);

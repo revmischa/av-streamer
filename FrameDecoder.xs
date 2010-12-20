@@ -57,18 +57,14 @@ char* uri;
 
         FD_AVFormatCtx *formatCtx;
 
-        if ( av_open_input_file(&formatCtx, uri, NULL, 0, NULL) != 0 ) {
-            RETVAL = NULL;
-            return;
-        } else {
+        if ( av_open_input_file(&formatCtx, uri, NULL, 0, NULL) != 0 )
+            XSRETURN_UNDEF;
+        else
             RETVAL = formatCtx;
-        }
 
         /* make sure we can read the stream */
-        if ( av_find_stream_info(formatCtx) < 0 ) {
-            RETVAL = NULL;
-            return;
-        }
+        if ( av_find_stream_info(formatCtx) < 0 )
+            XSRETURN_UNDEF;
 
         /* unlock mutex */
         lock_status = pthread_mutex_unlock(&AVFormatCtxMP);
@@ -397,20 +393,23 @@ char* filename;
     {
         FD_AVFormatCtx *ctx;
 
-        /* attempt to guess the format from the filename */
         AVOutputFormat *fmt;
 
-        fmt = av_guess_format(NULL, filename, NULL);
+        /* attempt to guess the format using filename as format shortname */
+        fmt = av_guess_format(filename, NULL, NULL);
+
         if (! fmt) {
-            RETVAL = NULL;
-            return;
-        }
+           /* attempt to guess the format from the filename */
+           fmt = av_guess_format(NULL, filename, NULL);
+           if (! fmt) {
+               fprintf(stderr, "Unable to guess format from filename %s\n", filename);
+               XSRETURN_UNDEF;
+           }
+       }
         
         ctx = avformat_alloc_context();
-        if (! ctx) {
-            RETVAL = NULL;
-            return;
-        }
+        if (! ctx)
+            XSRETURN_UNDEF;
         
         ctx->oformat = fmt;
         snprintf(ctx->filename, sizeof(ctx->filename), "%s", filename);
@@ -418,8 +417,7 @@ char* filename;
         if (! (fmt->flags & AVFMT_NOFILE)) {
             if (url_fopen(&ctx->pb, filename, URL_WRONLY) < 0) {
                 fprintf(stderr, "Could not open '%s'\n", filename);
-                RETVAL = NULL;
-                return;
+                XSRETURN_UNDEF;
             }
         }
 
@@ -478,14 +476,12 @@ unsigned int gopsize;
     CODE:
     {
         FD_AVStream *vs = NULL;
-        RETVAL = NULL;
         int i;
 
         pixfmt = FD_DEFAULT_PIXFMT;
                 
-        if (ctx->oformat->video_codec == CODEC_ID_NONE) {
-            return;
-        }
+        if (ctx->oformat->video_codec == CODEC_ID_NONE)
+            XSRETURN_UNDEF;
         
         AVCodecContext *c;
         vs = av_new_stream(ctx, 0);

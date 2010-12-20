@@ -1,4 +1,6 @@
 use 5.010000;
+
+use lib 'inc';
 use ExtUtils::MakeMaker;
 use ExtUtils::PkgConfig;
 

@@ -10,15 +10,18 @@ has 'frame_count' => (
     isa => 'Int',
     default => 0,
     cmd_flag => 'framecount',
-    cmd_aliases => 'f',
+    cmd_aliases => 'c',
     metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
-# file name or stream URI
+# input file name or stream URI
 has 'stream_uri' => (
     is => 'rw',
     isa => 'Str',
     required => 1,
+    cmd_flag => 'input',
+    cmd_aliases => 'i',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
 # verbose output, print errors
