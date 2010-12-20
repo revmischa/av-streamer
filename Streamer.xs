@@ -13,15 +13,15 @@
 #include <stdbool.h>
 
 #pragma mark types
-typedef struct AVFormatContext FD_AVFormatCtx;
-typedef struct AVCodecContext  FD_AVCodecCtx;
-typedef struct AVFrame         FD_AVFrame;
-typedef struct AVStream        FD_AVStream;
-typedef struct AVFormatContext FD_AVOutputFormat;
-typedef uint8_t                FD_FrameBuffer;
+typedef struct AVFormatContext FFS_AVFormatCtx;
+typedef struct AVCodecContext  FFS_AVCodecCtx;
+typedef struct AVFrame         FFS_AVFrame;
+typedef struct AVStream        FFS_AVStream;
+typedef struct AVFormatContext FFS_AVOutputFormat;
+typedef uint8_t                FFS_FrameBuffer;
 typedef short bool_t;
 
-#define FD_DEFAULT_PIXFMT PIX_FMT_YUV420P
+#define FFS_DEFAULT_PIXFMT PIX_FMT_YUV420P
 
 #pragma mark globals
 pthread_mutex_t AVFormatCtxMP;
@@ -38,12 +38,12 @@ BOOT:
 
 #pragma mark methods
 
-FD_AVFormatCtx*
-ffv_fd_open_uri(uri)
+FFS_AVFormatCtx*
+ffs_open_uri(uri)
 char* uri;
     CODE:
     {
-        /* ffv_fd_open_uri: wrapper around av_open_input_file */
+        /* ffs_open_uri: wrapper around av_open_input_file */
 
         int lock_status;
 
@@ -55,7 +55,7 @@ char* uri;
             croak("Unable to lock mutex AVFormatCtxMP for %s: %s", uri, sys_errlist[lock_status]);
         };
 
-        FD_AVFormatCtx *formatCtx;
+        FFS_AVFormatCtx *formatCtx;
 
         if ( av_open_input_file(&formatCtx, uri, NULL, 0, NULL) != 0 )
             XSRETURN_UNDEF;
@@ -75,45 +75,69 @@ char* uri;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_find_first_video_stream_index(ctx)
-FD_AVFormatCtx* ctx;
+ffs_stream_count(fmt)
+FFS_AVFormatCtx* fmt;
     CODE:
-    {
-        /* given a context, look for the first video stream inside of
-         it. returns stream index or -1 */
-         
-
-        int video_stream = -1;
-        int i;
-
-        for ( i = 0; i < ctx->nb_streams; i++ ) {
-            if ( ctx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO ) {
-                video_stream = i;
-                break;
-            }
-        }
-        
-        RETVAL = video_stream;
-    }
+        RETVAL = fmt->nb_streams;
     OUTPUT: RETVAL
 
-FD_AVCodecCtx*
-ffv_fd_get_stream(ctx, idx)
+unsigned short
+ffs_is_video_stream_index(fmt, index)
+FFS_AVFormatCtx* fmt;
+unsigned int index;
+    CODE:
+        RETVAL = fmt->streams[index]->codec->codec_type == CODEC_TYPE_VIDEO;
+    OUTPUT: RETVAL
+
+unsigned short
+ffs_is_audio_stream_index(fmt, index)
+FFS_AVFormatCtx* fmt;
+unsigned int index;
+    CODE:
+        RETVAL = fmt->streams[index]->codec->codec_type == CODEC_TYPE_AUDIO;
+    OUTPUT: RETVAL
+
+unsigned short
+ffs_is_video_stream(stream)
+FFS_AVStream* stream;
+    CODE:
+        RETVAL = stream->codec->codec_type == CODEC_TYPE_VIDEO;
+    OUTPUT: RETVAL
+
+unsigned short
+ffs_is_audio_stream(stream)
+FFS_AVStream* stream;
+    CODE:
+        RETVAL = stream->codec->codec_type == CODEC_TYPE_AUDIO;
+    OUTPUT: RETVAL
+
+
+unsigned int
+ffs_get_stream_index(stream)
+FFS_AVStream* stream;
+    CODE:
+        RETVAL = stream->index;
+    OUTPUT: RETVAL
+
+FFS_AVStream*
+ffs_get_stream(ctx, idx)
+FFS_AVFormatCtx* ctx;
 int idx;
-FD_AVFormatCtx* ctx;
     CODE:
     {
         /* get a stream from a format context by index.
-        returns a pointer to the stream codec context or NULL */
+        returns a pointer to the stream context or NULL */
         
         /* look up codec object */
-        FD_AVCodecCtx *codec_ctx = ctx->streams[idx]->codec;
-        RETVAL = codec_ctx;
+        FFS_AVStream *stream = ctx->streams[idx];
+        if (! stream) XSRETURN_UNDEF;
+
+        RETVAL = stream;
     }
     OUTPUT: RETVAL
 
-FD_AVFrame*
-ffv_fd_alloc_frame()
+FFS_AVFrame*
+ffs_alloc_frame()
     CODE:
     {
         /* allocate space for an AVFrame struct */
@@ -122,8 +146,8 @@ ffv_fd_alloc_frame()
     OUTPUT: RETVAL
 
 void
-ffv_fd_dealloc_frame(frame)
-FD_AVFrame* frame;
+ffs_dealloc_frame(frame)
+FFS_AVFrame* frame;
     CODE:
     {
         /* dellocate frame storage */
@@ -131,23 +155,23 @@ FD_AVFrame* frame;
     }
     
 void
-ffv_fd_dealloc_frame_buffer(buf)
-FD_FrameBuffer* buf;
+ffs_dealloc_frame_buffer(buf)
+FFS_FrameBuffer* buf;
     CODE:
     {
         /* dellocate frame buffer storage */
         free(buf);
     }
 
-FD_FrameBuffer*
-ffv_fd_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
-FD_AVCodecCtx* codec_ctx;
-FD_AVFrame* dst_frame;
+FFS_FrameBuffer*
+ffs_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
+FFS_AVCodecCtx* codec_ctx;
+FFS_AVFrame* dst_frame;
 int pixformat;
     CODE:
     {
         unsigned int size;
-        FD_FrameBuffer *buf;
+        FFS_FrameBuffer *buf;
                 
         /* calculate size of storage required for a frame */
         size = avpicture_get_size(pixformat, codec_ctx->width,
@@ -164,13 +188,19 @@ int pixformat;
     }
     OUTPUT: RETVAL
 
+FFS_AVCodecCtx*
+ffs_get_codec_ctx(stream)
+FFS_AVStream* stream;
+    CODE:
+        RETVAL = stream->codec;
+    OUTPUT: RETVAL
 
 bool_t
-ffv_fd_open_codec(codec_ctx)
-FD_AVCodecCtx* codec_ctx;
+ffs_open_codec(codec_ctx)
+FFS_AVCodecCtx* codec_ctx;
     CODE:
     {
-        /* ffv_fd_open_codec(codec_ctx) attempts to find a decoder for this
+        /* ffs_open_codec(codec_ctx) attempts to find a decoder for this
          codec and open it. returns success/failure */
 
         /* find the decoder for the video stream */
@@ -193,22 +223,22 @@ FD_AVCodecCtx* codec_ctx;
     OUTPUT: RETVAL
 
 void
-ffv_fd_close_codec(codec_ctx)
-FD_AVCodecCtx* codec_ctx;
+ffs_close_codec(codec_ctx)
+FFS_AVCodecCtx* codec_ctx;
     CODE:
     {
         avcodec_close(codec_ctx);
     }
 
 bool_t
-ffv_fd_decode_frames(format_ctx, codec_ctx, stream_index, dest_pixfmt, src_frame, dst_frame, dst_frame_buffer, frame_count, decoded_cb)
-FD_AVFormatCtx* format_ctx;
-FD_AVCodecCtx* codec_ctx;
+ffs_decode_frames(format_ctx, codec_ctx, stream_index, dest_pixfmt, src_frame, dst_frame, dst_frame_buffer, frame_count, decoded_cb)
+FFS_AVFormatCtx* format_ctx;
+FFS_AVCodecCtx* codec_ctx;
 unsigned int stream_index;
 int dest_pixfmt;
-FD_AVFrame* src_frame;
-FD_AVFrame* dst_frame;
-FD_FrameBuffer* dst_frame_buffer;
+FFS_AVFrame* src_frame;
+FFS_AVFrame* dst_frame;
+FFS_FrameBuffer* dst_frame_buffer;
 unsigned int frame_count;
 CV* decoded_cb;
     CODE:
@@ -275,57 +305,57 @@ CV* decoded_cb;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_codec_ctx_width(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_width(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->width;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_codec_ctx_height(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_height(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->height;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_codec_ctx_bitrate(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_bitrate(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->bit_rate;
     OUTPUT: RETVAL
     
 int
-ffv_fd_get_codec_ctx_base_den(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_base_den(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->time_base.den;
     OUTPUT: RETVAL
 
 int
-ffv_fd_get_codec_ctx_base_num(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_base_num(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->time_base.num;
     OUTPUT: RETVAL
 
 int
-ffv_fd_get_codec_ctx_pixfmt(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_pixfmt(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->pix_fmt;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_codec_ctx_gopsize(c)
-FD_AVCodecCtx* c;
+ffs_get_codec_ctx_gopsize(c)
+FFS_AVCodecCtx* c;
     CODE:
         RETVAL = c->gop_size;
     OUTPUT: RETVAL
 
 char*
-ffv_fd_get_frame_line_pointer(frame, y)
-FD_AVFrame* frame;
+ffs_get_frame_line_pointer(frame, y)
+FFS_AVFrame* frame;
 unsigned int y;
     CODE:
     {
@@ -334,8 +364,8 @@ unsigned int y;
     OUTPUT: RETVAL
 
 unsigned int
-ffv_fd_get_frame_size(frame, line_size, height)
-FD_AVFrame* frame;
+ffs_get_frame_size(frame, line_size, height)
+FFS_AVFrame* frame;
 unsigned int line_size;
 unsigned int height;
     CODE:
@@ -347,8 +377,8 @@ unsigned int height;
     OUTPUT: RETVAL
     
 unsigned int
-ffv_fd_get_line_size(frame, width)
-FD_AVFrame* frame;
+ffs_get_line_size(frame, width)
+FFS_AVFrame* frame;
 unsigned int width;
     CODE:
     {
@@ -360,8 +390,8 @@ unsigned int width;
     OUTPUT: RETVAL
 
 SV*
-ffv_fd_get_frame_data(frame, width, height, line_size, frame_size)
-FD_AVFrame* frame;
+ffs_get_frame_data(frame, width, height, line_size, frame_size)
+FFS_AVFrame* frame;
 unsigned int width;
 unsigned int height;
 unsigned int line_size;
@@ -386,13 +416,13 @@ unsigned int frame_size;
     }
     OUTPUT: RETVAL
 
-FD_AVFormatCtx*
-ffv_fd_new_output_format_ctx(filename, format)
+FFS_AVFormatCtx*
+ffs_new_output_format_ctx(filename, format)
 char* filename;
 char* format;
     CODE:
     {
-        FD_AVFormatCtx *ctx;
+        FFS_AVFormatCtx *ctx;
 
         AVOutputFormat *fmt;
 
@@ -424,18 +454,10 @@ char* format;
      OUTPUT: RETVAL
 
 void
-ffv_fd_close_output_format_ctx(ctx)
-FD_AVFormatCtx* ctx;
+ffs_close_output_format_ctx(ctx)
+FFS_AVFormatCtx* ctx;
     CODE:
     {
-        unsigned int i;
-        
-        /* free streams */
-        for (i = 0; i < ctx->nb_streams; i++) {
-            av_freep(&ctx->streams[i]->codec);
-            av_freep(&ctx->streams[i]);
-        }
-
         /* close file if open */
         if (! (ctx->oformat->flags & AVFMT_NOFILE)) {
             url_fclose(ctx->pb);
@@ -443,19 +465,30 @@ FD_AVFormatCtx* ctx;
     }
 
 void
-ffv_fd_set_ctx_metadata(ctx, key, value)
-FD_AVFormatCtx* ctx;
+ffs_destroy_stream(stream)
+FFS_AVStream* stream;
+    CODE:
+    {
+        if (stream->codec)
+            av_freep(&stream->codec);
+
+        av_freep(&stream);
+    }
+
+void
+ffs_set_ctx_metadata(ctx, key, value)
+FFS_AVFormatCtx* ctx;
 const char* key;
 const char* value;
     CODE:
     {
-        av_metadata_set2(&ctx->metadata, key, value, NULL);
+        av_metadata_set2(&ctx->metadata, key, value, 0);
     }
 
     
 void
-ffv_fd_write_header(ctx)
-FD_AVFormatCtx* ctx;
+ffs_write_header(ctx)
+FFS_AVFormatCtx* ctx;
     CODE:
     {
         av_write_header(ctx);
@@ -463,16 +496,16 @@ FD_AVFormatCtx* ctx;
     }
 
 void
-ffv_fd_write_trailer(ctx)
-FD_AVFormatCtx* ctx;
+ffs_write_trailer(ctx)
+FFS_AVFormatCtx* ctx;
     CODE:
     {
         av_write_trailer(ctx);
     }    
 
-FD_AVStream*
-ffv_fd_new_output_video_stream(ctx, width, height, bitrate, base_num, base_den, pixfmt, gopsize)
-FD_AVFormatCtx* ctx;
+FFS_AVStream*
+ffs_new_output_video_stream(ctx, width, height, bitrate, base_num, base_den, pixfmt, gopsize)
+FFS_AVFormatCtx* ctx;
 unsigned int width;
 unsigned int height;
 unsigned int bitrate;
@@ -482,10 +515,10 @@ int pixfmt;
 unsigned int gopsize;
     CODE:
     {
-        FD_AVStream *vs = NULL;
+        FFS_AVStream *vs = NULL;
         int i;
 
-        pixfmt = FD_DEFAULT_PIXFMT;
+        pixfmt = FFS_DEFAULT_PIXFMT;
                 
         if (ctx->oformat->video_codec == CODEC_ID_NONE)
             XSRETURN_UNDEF;
@@ -547,18 +580,18 @@ unsigned int gopsize;
     OUTPUT: RETVAL
     
 int
-ffv_fd_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)
-FD_AVFormatCtx* format_ctx;
-FD_AVCodecCtx*  src_codec_ctx;
-FD_AVStream*    stream;
-FD_AVFrame*     frame;
+ffs_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)
+FFS_AVFormatCtx* format_ctx;
+FFS_AVCodecCtx*  src_codec_ctx;
+FFS_AVStream*    stream;
+FFS_AVFrame*     frame;
     CODE:
     {
         unsigned int out_size;
         char *video_outbuf;
         unsigned int video_outbuf_size;
         AVPacket pkt;
-        FD_AVCodecCtx *dest_codec_ctx;
+        FFS_AVCodecCtx *dest_codec_ctx;
         
         dest_codec_ctx = stream->codec;
 
@@ -599,14 +632,14 @@ FD_AVFrame*     frame;
     }
     OUTPUT: RETVAL
 
-FD_AVStream*
-ffv_fd_new_output_audio_stream(ctx, sample_rate, bit_rate)
-FD_AVFormatCtx* ctx;
+FFS_AVStream*
+ffs_new_output_audio_stream(ctx, sample_rate, bit_rate)
+FFS_AVFormatCtx* ctx;
 unsigned int sample_rate;
 unsigned int bit_rate;
     CODE:
     {
-        FD_AVStream *as = NULL;
+        FFS_AVStream *as = NULL;
         int i;
 
                 
@@ -651,18 +684,18 @@ unsigned int bit_rate;
     OUTPUT: RETVAL
     
 int
-ffv_fd_write_frame_to_output_audio_stream(format_ctx, src_codec_ctx, stream, frame)
-FD_AVFormatCtx* format_ctx;
-FD_AVCodecCtx*  src_codec_ctx;
-FD_AVStream*    stream;
-FD_AVFrame*     frame;
+ffs_write_frame_to_output_audio_stream(format_ctx, src_codec_ctx, stream, frame)
+FFS_AVFormatCtx* format_ctx;
+FFS_AVCodecCtx*  src_codec_ctx;
+FFS_AVStream*    stream;
+FFS_AVFrame*     frame;
     CODE:
     {
         unsigned int out_size;
         char *audio_outbuf;
         unsigned int audio_outbuf_size;
         AVPacket pkt;
-        FD_AVCodecCtx *dest_codec_ctx;
+        FFS_AVCodecCtx *dest_codec_ctx;
         
         dest_codec_ctx = stream->codec;
 
@@ -678,7 +711,7 @@ FD_AVFrame*     frame;
             av_init_packet(&pkt);
 
             /* no idea what this is! */
-            if ($c->coded_frame && dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
+            if (dest_codec_ctx->coded_frame && dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
                 pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
                                        dest_codec_ctx->time_base, stream->time_base);
             }
@@ -698,17 +731,17 @@ FD_AVFrame*     frame;
     OUTPUT: RETVAL
 
 void
-ffv_fd_close_stream(ctx, stream)
-FD_AVFormatCtx* ctx;
-FD_AVStream* stream;
+ffs_close_stream(ctx, stream)
+FFS_AVFormatCtx* ctx;
+FFS_AVStream* stream;
     CODE:
     {
         avcodec_close(stream->codec);
     }
 
 void
-ffv_fd_dump_format(ctx, title)
-FD_AVFormatCtx* ctx;
+ffs_dump_format(ctx, title)
+FFS_AVFormatCtx* ctx;
 char* title;
     CODE:
     {
@@ -717,8 +750,8 @@ char* title;
     }
 
 void
-ffv_fd_destroy_context(ctx)
-FD_AVFormatCtx* ctx;
+ffs_destroy_context(ctx)
+FFS_AVFormatCtx* ctx;
     CODE:
     {
         /* destroy a context */

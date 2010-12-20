@@ -35,7 +35,6 @@ after 'decoding_started' => sub {
     }
 
     $self->output_context($output_context);
-    Video::FFmpeg::FrameDecoder::ffv_fd_set_ctx_metadata($output_context, 'streamName', 'stream1');
 
     my $bitrate = $self->dest_bitrate || $codec_ctx->bitrate;
     

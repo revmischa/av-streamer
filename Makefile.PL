@@ -10,14 +10,13 @@ die("Installed libavformat version is too low. I require 52.16 or greater") unle
     ExtUtils::PkgConfig->atleast_version("libavformat", "52.16.0"));
 
 WriteMakefile(
-    NAME           => 'Video::FFmpeg::FrameDecoder',
+    NAME           => 'Video::FFmpeg::Streamer',
     AUTHOR         => 'Mischa Spiegelmock <revmischa@cpan.org>',
 
-    VERSION_FROM   => 'lib/Video/FFmpeg/FrameDecoder.pm',
-    ABSTRACT_FROM  => 'lib/Video/FFmpeg/FrameDecoder.pm',
+    VERSION_FROM   => 'lib/Video/FFmpeg/Streamer.pm',
+    ABSTRACT_FROM  => 'lib/Video/FFmpeg/Streamer.pm',
 
     PREREQ_PM      => {
-        'ExtUtils::PkgConfig' => 0,
         'MooseX::NonMoose' => 0,
         'MooseX::Getopt' => 0,
         'namespace::autoclean' => 0,
