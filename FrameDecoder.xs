@@ -387,25 +387,21 @@ unsigned int frame_size;
     OUTPUT: RETVAL
 
 FD_AVFormatCtx*
-ffv_fd_new_output_format_ctx(filename)
+ffv_fd_new_output_format_ctx(filename, format)
 char* filename;
+char* format;
     CODE:
     {
         FD_AVFormatCtx *ctx;
 
         AVOutputFormat *fmt;
 
-        /* attempt to guess the format using filename as format shortname */
-        fmt = av_guess_format(filename, NULL, NULL);
-
+        /* attempt to guess the format from the filename (and format if supplied) */
+        fmt = av_guess_format(format, filename, NULL);
         if (! fmt) {
-           /* attempt to guess the format from the filename */
-           fmt = av_guess_format(NULL, filename, NULL);
-           if (! fmt) {
-               fprintf(stderr, "Unable to guess format from filename %s\n", filename);
-               XSRETURN_UNDEF;
-           }
-       }
+            fprintf(stderr, "Unable to guess format from filename %s\n", filename);
+            XSRETURN_UNDEF;
+        }
         
         ctx = avformat_alloc_context();
         if (! ctx)
@@ -445,6 +441,17 @@ FD_AVFormatCtx* ctx;
             url_fclose(ctx->pb);
         }
     }
+
+void
+ffv_fd_set_ctx_metadata(ctx, key, value)
+FD_AVFormatCtx* ctx;
+const char* key;
+const char* value;
+    CODE:
+    {
+        av_metadata_set2(&ctx->metadata, key, value, NULL);
+    }
+
     
 void
 ffv_fd_write_header(ctx)

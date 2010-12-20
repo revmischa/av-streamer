@@ -48,26 +48,20 @@ after 'decoding_started' => sub {
 
     my $output_context;
 
-    if ($self->output_format) {
-        # specify format shortname
-        $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_format);
-        unless ($output_context) {
-            warn "Failed to create context for format '" . $self->output_format . "'\n";
+    # specify format shortname
+    $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_file_name, $self->output_format);
+    unless ($output_context) {
+        if ($self->output_format) {
+            die "Failed to create context for format '" . $self->output_format . "'\n";
+        } else {
+            die "Unable to create an output context for " . $self->output_file_name . 
+                ". Please specify a file name with a supported extension.\n";
         }
     }
 
-    unless ($output_context) {
-        # try to guess format from file extension
-        $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_file_name);
-    }
-
-    unless ($output_context) {
-        die "Unable to create an output context for " . $self->output_file_name . 
-            ". Please specify a file name with a supported extension.\n";
-    }
-
     $self->output_context($output_context);
-    
+    Video::FFmpeg::FrameDecoder::ffv_fd_set_ctx_metadata($output_context, 'streamName', 'stream1');
+
     my $bitrate = $self->dest_bitrate || $codec_ctx->bitrate;
     
     my $output_video_stream =
