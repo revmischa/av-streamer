@@ -577,13 +577,13 @@ FD_AVFrame*     frame;
             av_init_packet(&pkt);
 
             /* no idea what this is! */
-            if (dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE)
+            if (dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
                 pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
                 dest_codec_ctx->time_base, stream->time_base);
-
-            if (dest_codec_ctx->coded_frame->key_frame) {
-                pkt.flags |= AV_PKT_FLAG_KEY;
             }
+
+            if (dest_codec_ctx->coded_frame->key_frame)
+                pkt.flags |= AV_PKT_FLAG_KEY;
 
             pkt.stream_index = stream->index;
             pkt.data = video_outbuf;
@@ -599,8 +599,106 @@ FD_AVFrame*     frame;
     }
     OUTPUT: RETVAL
 
+FD_AVStream*
+ffv_fd_new_output_audio_stream(ctx, sample_rate, bit_rate)
+FD_AVFormatCtx* ctx;
+unsigned int sample_rate;
+unsigned int bit_rate;
+    CODE:
+    {
+        FD_AVStream *as = NULL;
+        int i;
+
+                
+        if (ctx->oformat->audio_codec == CODEC_ID_NONE)
+            XSRETURN_UNDEF;
+        
+        AVCodecContext *c;
+        as = av_new_stream(ctx, 0);
+        if (! as) {
+            XSRETURN_UNDEF;
+        }
+        
+        as->stream_copy = 1;
+        
+        c = as->codec;
+        c->codec_id = ctx->oformat->audio_codec;
+        c->codec_type = AVMEDIA_TYPE_VIDEO;
+
+        /* put sample parameters */
+        c->bit_rate = bit_rate;
+        c->sample_rate = sample_rate;
+        c->channels = 2;
+        c->sample_fmt = AV_SAMPLE_FMT_S16;
+            
+        /* open audio stream codec */
+        AVCodec *codec;
+        codec = avcodec_find_encoder(c->codec_id);
+        if (! codec) {
+            fprintf(stderr, "failed to find encoder");
+            return;
+        }
+
+        dump_format(ctx, 0, "output", 1);
+            
+        if (avcodec_open(c, codec) < 0) {
+            fprintf(stderr, "failed to open codec");
+            return;
+        }
+
+        RETVAL = as;
+    }
+    OUTPUT: RETVAL
+    
+int
+ffv_fd_write_frame_to_output_audio_stream(format_ctx, src_codec_ctx, stream, frame)
+FD_AVFormatCtx* format_ctx;
+FD_AVCodecCtx*  src_codec_ctx;
+FD_AVStream*    stream;
+FD_AVFrame*     frame;
+    CODE:
+    {
+        unsigned int out_size;
+        char *audio_outbuf;
+        unsigned int audio_outbuf_size;
+        AVPacket pkt;
+        FD_AVCodecCtx *dest_codec_ctx;
+        
+        dest_codec_ctx = stream->codec;
+
+        audio_outbuf_size = 200000;
+        audio_outbuf = av_mallocz(audio_outbuf_size);
+        
+        RETVAL = 0;
+        
+        out_size = avcodec_encode_audio(dest_codec_ctx, audio_outbuf, audio_outbuf_size, frame);
+        
+        /* if zero size, it means the image was buffered */
+        if (out_size > 0) {
+            av_init_packet(&pkt);
+
+            /* no idea what this is! */
+            if ($c->coded_frame && dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
+                pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
+                                       dest_codec_ctx->time_base, stream->time_base);
+            }
+
+            pkt.stream_index = stream->index;
+            pkt.data = audio_outbuf;
+            pkt.size = out_size;
+            
+            /* write the compressed frame in the media file */
+            RETVAL = av_interleaved_write_frame(format_ctx, &pkt);
+        } else {
+            RETVAL = 1;
+        }
+
+        av_free(audio_outbuf);
+    }
+    OUTPUT: RETVAL
+
 void
-ffv_fd_close_video_stream(ctx, stream)
+ffv_fd_close_stream(ctx, stream)
 FD_AVFormatCtx* ctx;
 FD_AVStream* stream;
     CODE:

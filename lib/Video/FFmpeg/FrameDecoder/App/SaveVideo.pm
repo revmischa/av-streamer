@@ -9,31 +9,6 @@ use Carp qw/croak/;
 
 use Video::FFmpeg::FrameDecoder;
 
-has 'output_file_name' => (
-    is => 'rw',
-    isa => 'Str',
-    required => 1,
-    cmd_flag => 'output',
-    cmd_aliases => 'o',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
-);
-
-has 'dest_bitrate' => (
-    is => 'rw',
-    isa => 'Int',
-    cmd_flag => 'bitrate',
-    cmd_aliases => 'b',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
-);
-
-has 'output_format' => (
-    is => 'rw',
-    isa => 'Str',
-    cmd_flag => 'format',
-    cmd_aliases => 'f',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
-);
-
 has 'output_context' => (
     is => 'rw',
 );
@@ -72,8 +47,6 @@ after 'decoding_started' => sub {
         $bitrate,
         $codec_ctx->base_num,
         $codec_ctx->base_den,
-#        5,
-#        20,
         $codec_ctx->pixfmt,
         $codec_ctx->gopsize,
     );
@@ -91,7 +64,7 @@ after 'decoding_finished' => sub {
 
     Video::FFmpeg::FrameDecoder::ffv_fd_write_trailer($self->output_context);
 
-    Video::FFmpeg::FrameDecoder::ffv_fd_close_video_stream(
+    Video::FFmpeg::FrameDecoder::ffv_fd_close_stream(
             $self->output_context,
             $self->output_video_stream,
     ) if $self->output_video_stream;

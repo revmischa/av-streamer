@@ -24,6 +24,31 @@ has 'stream_uri' => (
     metaclass => 'MooseX::Getopt::Meta::Attribute',
 );
 
+has 'output_file_name' => (
+    is => 'rw',
+    isa => 'Str',
+    required => 1,
+    cmd_flag => 'output',
+    cmd_aliases => 'o',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
+);
+
+has 'dest_bitrate' => (
+    is => 'rw',
+    isa => 'Int',
+    cmd_flag => 'bitrate',
+    cmd_aliases => 'b',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
+);
+
+has 'output_format' => (
+    is => 'rw',
+    isa => 'Str',
+    cmd_flag => 'format',
+    cmd_aliases => 'f',
+    metaclass => 'MooseX::Getopt::Meta::Attribute',
+);
+
 # verbose output, print errors
 has 'debug' => (
     is => 'rw',
