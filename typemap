@@ -1,10 +1,11 @@
 TYPEMAP
-FFS_AVFormatCtx    *                 T_PTROBJ_SPECIAL
-FFS_AVCodecCtx     *                 T_PTROBJ_SPECIAL
-FFS_AVStream       *                 T_PTROBJ_SPECIAL
-FFS_AVOutputFormat *                 T_PTROBJ_SPECIAL
-FFS_AVFrame        *                 T_PTROBJ_SPECIAL
-FFS_FrameBuffer    *                 T_PTROBJ_SPECIAL
+AVFormatContext *                 T_PTROBJ_SPECIAL
+AVCodecContext  *                 T_PTROBJ_SPECIAL
+AVCodec         *                 T_PTROBJ_SPECIAL
+AVStream        *                 T_PTROBJ_SPECIAL
+AVOutputFormat  *                 T_PTROBJ_SPECIAL
+AVFrame         *                 T_PTROBJ_SPECIAL
+FFS_FrameBuffer *                 T_PTROBJ_SPECIAL
 PixelFormat                          T_IV
 
 INPUT

@@ -2,6 +2,7 @@ package Video::FFmpeg::Streamer::Stream::Audio;
 
 use Moose;
 use namespace::autoclean;
+use Video::FFmpeg::Streamer;
 
 extends 'Video::FFmpeg::Streamer::Stream';
 

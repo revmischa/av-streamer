@@ -64,12 +64,6 @@ has 'frame_decode_delegate' => (
     does => 'Video::FFmpeg::FrameDecoder::FrameHandler',
 );
 
-has 'dest_pix_format' => (
-    is => 'rw',
-    isa => 'Str',
-    default => 'PIX_FMT_YUV420P',
-);
-
 sub width {
     my ($self) = @_;
     return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_width($self->codec_ctx);
