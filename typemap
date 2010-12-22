@@ -6,7 +6,8 @@ AVStream        *                 T_PTROBJ_SPECIAL
 AVOutputFormat  *                 T_PTROBJ_SPECIAL
 AVFrame         *                 T_PTROBJ_SPECIAL
 FFS_FrameBuffer *                 T_PTROBJ_SPECIAL
-PixelFormat                          T_IV
+PixelFormat                       T_IV
+CodecID                           T_IV
 
 INPUT
 T_PTROBJ_SPECIAL

@@ -5,6 +5,7 @@
 #include "ppport.h"
 
 #include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
 #include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
 #include <pthread.h>
@@ -13,7 +14,8 @@
 #include <stdbool.h>
 
 #pragma mark types
-typedef uint8_t                FFS_FrameBuffer;
+typedef enum CodecID    CodecID;
+typedef uint8_t         FFS_FrameBuffer;
 typedef short bool_t;
 
 #define FFS_DEFAULT_PIXFMT PIX_FMT_YUV420P
@@ -56,11 +58,10 @@ char* uri;
 
         if ( av_open_input_file(&formatCtx, uri, NULL, 0, NULL) != 0 )
             XSRETURN_UNDEF;
-        else
-            RETVAL = formatCtx;
 
         /* make sure we can read the stream */
-        if ( av_find_stream_info(formatCtx) < 0 ) {
+        int ret = av_find_stream_info(formatCtx);
+        if ( ret < 0 ) {
             fprintf("Failed to find codec parameters for input %s\n", uri);
             XSRETURN_UNDEF;
         }
@@ -70,6 +71,39 @@ char* uri;
         if ( lock_status != 0 ) {
             fprintf(stderr, "Unable to unlock mutex AVFormatCtxMP for %s: %s", uri, sys_errlist[lock_status]);
         };
+
+        RETVAL = formatCtx;
+    }
+    OUTPUT: RETVAL
+
+CodecID
+ffs_get_stream_codec_id(stream)
+AVStream *stream;
+    CODE:
+    {
+        RETVAL = stream->codec->codec_id;
+    }
+    OUTPUT: RETVAL
+
+int
+ffs_open_decoder(codec_ctx, codec_id)
+AVCodecContext *codec_ctx;
+CodecID codec_id;
+    CODE:
+    {
+        /* find decoder by id */
+        AVCodec *codec = avcodec_find_decoder(codec_id);
+        if (! codec) {
+            fprintf(stderr, "Failed to find codec id=%d\n", codec_id);
+            XSRETURN_UNDEF;
+        }
+
+        if (avcodec_open(codec_ctx, codec) < 0) {
+            fprintf(stderr, "Failed to open codec %s\n", codec->name);
+            XSRETURN_UNDEF;
+        }
+
+        RETVAL = 1;
     }
     OUTPUT: RETVAL
 
@@ -127,7 +161,6 @@ int idx;
         /* get a stream from a format context by index.
         returns a pointer to the stream context or NULL */
         
-        /* look up codec object */
         AVStream *stream = ctx->streams[idx];
         if (! stream) XSRETURN_UNDEF;
 

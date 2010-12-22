@@ -281,7 +281,7 @@ sub get_stream {
     my ($self, $index) = @_;
 
     croak "Attempting to get stream at index $index but there are only " . 
-        $self->stream_count . "streams" if $index >= $self->stream_count;
+        $self->stream_count . " streams" if $index >= $self->stream_count;
 
     my $stream = $self->streams->[$index];
     unless ($stream) {

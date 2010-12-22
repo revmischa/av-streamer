@@ -76,7 +76,11 @@ sub build_avstream {
 sub build_codec_ctx {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_get_codec_ctx($self->avstream);
+    my $ctx = Video::FFmpeg::Streamer::ffs_get_codec_ctx($self->avstream);
+    unless ($ctx) {
+        warn "Failed to get codec context for AVStream " . $self->avstream;
+        return;
+    }
 }
 
 sub build_index {
@@ -90,30 +94,34 @@ sub BUILD {
 
     return unless $self->avstream_exists;
 
+    # we are instantiating a new Stream and have an AVStream
+    # this is an input stream and we need to open the decoder
+
     my $avstream = $self->avstream;
     my $avcodec_ctx = $self->codec_ctx;
 
     # make sure we have a codec context
-    if (! $avcodec_ctx) {
+    unless ($avcodec_ctx) {
         warn "Expected to find AVCodecContext for stream";
         return;
     }
- 
-    # make sure the codec context has a codec
-    unless (Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec($avcodec_ctx)) {
-        warn "Expected to find AVCodec in AVCodecContext $avcodec_ctx";
+
+    # make sure we have a codec ID (should be already found from av_find_stream_info)
+    my $codec_id = Video::FFmpeg::Streamer::ffs_get_stream_codec_id($self->avstream);
+    unless ($codec_id) {
+        warn "Failed to find codec ID for stream " . $self->avstream .
+            ". Perhaps the codec format is unknown.";
         return;
     }
 
-   warn "ctx: $avcodec_ctx";
+    unless (Video::FFmpeg::Streamer::ffs_open_decoder($avcodec_ctx, $codec_id)) {
+        warn "Could not open decoder for AVStream " . $self->avstream . " codec ID $codec_id";
+        return;
+    }
 
-    # we are instantiating a new Stream and have an AVStream
     # extract info from the AVStream and codec context:
-    warn "extracting";
     $self->bit_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_bitrate($avcodec_ctx));
-#    $self->codec_name(Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec_name($avcodec_ctx));
-
-    warn "codec name: " . $self->codec_name . " bit rate: " . $self->bit_rate;
+    $self->codec_name(Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec_name($avcodec_ctx));
 }
 
 =head2 METHODS

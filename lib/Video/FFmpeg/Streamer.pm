@@ -96,8 +96,9 @@ has 'output_format_contexts' => (
 
 =item real_time
 
-Do decoding in real-time. needed if attempting to stream recorded
-video live, otherwise you will be streaming as fast as it can encode
+Do decoding in real-time. needed if attempting to stream a recorded
+video file live. If not specified you will be streaming as fast as the
+input file can be transcoded.
 
 =cut
 has 'real_time' => (
@@ -248,7 +249,7 @@ Mischa Spiegelmock, E<lt>revmischa@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2010 by Mischa Spiegelmock
+Copyright (C) 2011 by Mischa Spiegelmock
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,
