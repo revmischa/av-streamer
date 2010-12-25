@@ -349,8 +349,6 @@ sub read_frame {
     my $pkt = $self->avpacket;
     my $ret = Video::FFmpeg::Streamer::ffs_read_frame($format_ctx, $pkt);
 
-    warn "decode frame pkt=$pkt ret=$ret";
-
     my $retpkt = Video::FFmpeg::Streamer::Packet->new(
         avpacket => $pkt,
         success  => ($ret > -1),

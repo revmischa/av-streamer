@@ -289,7 +289,6 @@ int stream_index;
     CODE:
     {
         /* write frame to output. you may need to encode the frame first */
-        printf("writing frame\n");
         RETVAL = av_interleaved_write_frame(ctx, pkt);
     }
     OUTPUT: RETVAL

@@ -179,7 +179,7 @@ sub stream {
     $_->write_header for @{ $self->output_format_contexts };
 
     while ($self->read_frame) {
-        warn "read frame";
+
     }
 
     $_->write_trailer for @{ $self->output_format_contexts };
@@ -196,7 +196,7 @@ sub read_frame {
     my $pkt = $self->input_format_context->read_frame;
     if (! $pkt->success) {
         warn "reached end of input";
-        return 0;
+        return;
     }
 
     if (! $pkt->avpacket) {
@@ -207,11 +207,11 @@ sub read_frame {
     my $stream_index = $pkt->stream_index;
     unless (defined $stream_index) {
         warn "didn't get stream index from packet";
-        return 1;
+        return;
     }
 
     # don't bother with output if no corresponding output streams
-    next unless grep { $_->streams->[$stream_index] }
+    return 1 unless grep { $_->streams->[$stream_index] }
         @{ $self->output_format_contexts };
 
     # get input stream

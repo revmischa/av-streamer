@@ -64,14 +64,10 @@ sub write_frame {
     }
     
     # write packet to output
-    warn "writing packet $oavpkt";
     my $ret = Video::FFmpeg::Streamer::ffs_write_frame($format_ctx, $oavpkt);
-    warn "write frame pkt ret=$ret";
 
-    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # ???
-    warn "destroying packet";
-    Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt);
-    warn "packet destroyed";
+    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
+    Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
     return $ret > -1;
 }
