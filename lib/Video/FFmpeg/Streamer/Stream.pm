@@ -72,9 +72,24 @@ has 'avstream_allocated' => (
 );
 
 sub create_avstream {
-    my ($self) = @_;
+    my ($self, $istream) = @_;
 
-    Carp::confess("Attempting to create new AVStream in the base class");
+    $self->destroy_stream;
+
+    if (! $self->index_defined) {
+        croak "Attempting to create stream without stream index defined";
+    }
+
+    my $codec_name = $self->codec_name
+        or croak "Attempting to create stream without codec type defined";
+
+    my $oavstream = Video::FFmpeg::Streamer::ffs_create_stream($self->format_ctx->avformat)
+        or die "Failed to create new video stream for codec " . $self->codec_name;
+
+    $self->avstream($oavstream);
+    $self->avstream_allocated(1);
+
+    return $oavstream;
 }
 
 sub build_codec_ctx {

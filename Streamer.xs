@@ -639,7 +639,7 @@ AVFormatContext* ctx;
     }    
 
 AVStream*
-ffs_create_video_stream(ofmt)
+ffs_create_stream(ofmt)
 AVFormatContext *ofmt;
     CODE:
     {
@@ -656,7 +656,7 @@ AVFormatContext *ofmt;
     OUTPUT: RETVAL
 
 int
-ffs_copy_video_stream_params(ofmt, istream, ostream)
+ffs_copy_stream_params(ofmt, istream, ostream)
 AVStream *istream;
 AVStream *ostream;
 AVFormatContext *ofmt;

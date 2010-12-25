@@ -76,23 +76,11 @@ sub write_frame {
     return $ret > -1;
 }
 
-sub create_avstream {
+after 'create_avstream' => sub {
     my ($self, $istream) = @_;
 
-    $self->destroy_stream;
-
-    if (! $self->index_defined) {
-        croak "Attempting to create stream without stream index defined";
-    }
-
-    my $codec_name = $self->codec_name
-        or croak "Attempting to create stream without codec type defined";
-
-    my $oavstream = Video::FFmpeg::Streamer::ffs_create_video_stream($self->format_ctx->avformat)
-        or die "Failed to create new video stream for codec " . $self->codec_name;
-
     if ($self->stream_copy) {
-        my $ok = Video::FFmpeg::Streamer::ffs_copy_video_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
+        my $ok = Video::FFmpeg::Streamer::ffs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
         my $ok = Video::FFmpeg::Streamer::ffs_set_video_stream_params(
@@ -111,11 +99,6 @@ sub create_avstream {
 
         die "failed to set video stream params" unless $ok;
     }
-
-    $self->avstream($oavstream);
-    $self->avstream_allocated(1);
-
-    return $oavstream;
 }
 
 __PACKAGE__->meta->make_immutable;
