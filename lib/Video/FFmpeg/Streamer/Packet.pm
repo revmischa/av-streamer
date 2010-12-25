@@ -27,7 +27,7 @@ sub DEMOLISH {
     my ($self) = @_;
 
     if ($self->avpacket) {
-        warn "calling free_avpacket()";
+        warn "calling free_avpacket_data()";
         Video::FFmpeg::Streamer::ffs_free_avpacket_data($self->avpacket);
     }
 }

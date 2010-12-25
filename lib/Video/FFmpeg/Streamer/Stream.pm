@@ -14,7 +14,7 @@ stream.
 =cut
 
 has 'avstream' => (
-    is => 'ro',
+    is => 'rw',
     predicate => 'avstream_exists',
     clearer => 'clear_avstream',
 );

@@ -51,6 +51,12 @@ has 'output_opened' => (
     isa => 'Bool',
 );
 
+# did we open an input file for reading?
+has 'input_opened' => (
+    is => 'rw',
+    isa => 'Bool',
+);
+
 # FFS_AVFormatCtx
 # required if is input stream
 has 'avformat' => (
@@ -138,14 +144,12 @@ sub build_avformat_ctx {
     # attempt to open output
     my $fmt = Video::FFmpeg::Streamer::ffs_create_output_format_ctx($ofmt->ofmt, $uri);
     unless ($fmt) {
-        warn "Unable to open output $uri\n";
-        return;
+        die "Unable to open output $uri\n";
     }
 
     $self->output_opened(1);
     $self->output_format($ofmt);
     $self->avformat($fmt);
-    warn "build context";
 
     return $fmt;
 }
@@ -380,9 +384,11 @@ sub DEMOLISH {
     Video::FFmpeg::Streamer::ffs_destroy_avpacket($self->avpacket)
         if $self->avpacket_exists;
 
-    return unless $self->avformat_exists;
-    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
-        if $self->avformat_exists;
+    Video::FFmpeg::Streamer::ffs_close_input_file($self->avformat)
+        if $self->input_opened;
+
+#    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
+#        if $self->avformat_exists;
 }
 
 =back

@@ -238,7 +238,7 @@ AVStream* stream;
 AVPacket*
 ffs_alloc_avpacket()
     CODE:
-        RETVAL = av_malloc(sizeof(AVPacket));
+        RETVAL = av_mallocz(sizeof(struct AVPacket));
     OUTPUT: RETVAL
 
 void
@@ -259,7 +259,7 @@ ffs_destroy_avpacket(pkt)
 AVPacket* pkt;
     CODE:
     {
-        av_freep(pkt);
+      av_free(pkt);
     }
 
 void
@@ -295,7 +295,7 @@ int stream_index;
     OUTPUT: RETVAL
 
 void
-ffs_raw_stream(ipkt, opkt, ist, ost)
+ffs_raw_stream_packet(ipkt, opkt, ist, ost)
 AVPacket *ipkt;
 AVPacket *opkt;
 AVStream *ist;
@@ -568,8 +568,8 @@ char* uri;
         snprintf(ctx->filename, sizeof(ctx->filename), "%s", uri);
 
         ctx->pb = NULL;
-        /* open output file for writing (if applicable)
-        if (! (fmt->flags & AVFMT_NOFILE)) {
+        /* open output file for writing (if applicable) */
+        if (! (ofmt->flags & AVFMT_NOFILE)) {
             if (url_fopen(&ctx->pb, uri, URL_WRONLY) < 0) {
                 fprintf(stderr, "Could not open '%s' for writing\n", uri);
                 XSRETURN_UNDEF;
@@ -988,10 +988,17 @@ char* title;
     }
 
 void
+ffs_close_input_file(ctx)
+AVFormatContext* ctx;
+    CODE:
+    {
+        av_close_input_file(ctx);
+    }
+
+void
 ffs_destroy_context(ctx)
 AVFormatContext* ctx;
     CODE:
     {
-        /* destroy a context */
-        av_close_input_file(ctx);
+        av_free(ctx);
     }

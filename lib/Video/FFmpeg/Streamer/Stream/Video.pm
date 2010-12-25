@@ -68,8 +68,10 @@ sub write_frame {
     my $ret = Video::FFmpeg::Streamer::ffs_write_frame($format_ctx, $oavpkt);
     warn "write frame pkt ret=$ret";
 
-    Video::FFmpeg::Streamer::ffs_free_avpacket($oavpkt); # ???
+    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # ???
+    warn "destroying packet";
     Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt);
+    warn "packet destroyed";
 
     return $ret > -1;
 }
@@ -110,6 +112,7 @@ sub create_avstream {
         die "failed to set video stream params" unless $ok;
     }
 
+    $self->avstream($oavstream);
     $self->avstream_allocated(1);
 
     return $oavstream;

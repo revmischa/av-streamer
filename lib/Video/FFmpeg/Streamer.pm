@@ -148,9 +148,10 @@ sub open_uri {
     }
 
     my $fmt_ctx_obj = Video::FFmpeg::Streamer::FormatContext->new(
-        avformat => $fmt,
-        streamer => $self,
-        uri      => $uri,
+        avformat     => $fmt,
+        streamer     => $self,
+        uri          => $uri,
+        input_opened => 1,
     );
     
     $self->input_format_context($fmt_ctx_obj);
@@ -200,13 +201,13 @@ sub read_frame {
 
     if (! $pkt->avpacket) {
         warn "didn't get packet";
-        next;
+        return 1;
     }
 
     my $stream_index = $pkt->stream_index;
     unless (defined $stream_index) {
         warn "didn't get stream index from packet";
-        next;
+        return 1;
     }
 
     # don't bother with output if no corresponding output streams
@@ -217,7 +218,7 @@ sub read_frame {
     my $input_stream = $self->input_format_context->get_stream($stream_index);
     unless ($input_stream) {
         warn "Output streams exist for index $stream_index but no input stream with that index was found";
-        next;
+        return 1;
     }
 
     foreach my $output_ctx (@{ $self->output_format_contexts }) {
@@ -226,6 +227,8 @@ sub read_frame {
 
         $_->write_frame($pkt, $input_stream) foreach @$output_streams;
     }
+
+    return 1;
 }
 
 sub close_input {
