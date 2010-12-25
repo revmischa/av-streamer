@@ -167,6 +167,67 @@ sub add_output {
     return $output_fmt;
 }
 
+=item stream
+
+Streams from input stream to output streams
+
+=cut
+sub stream {
+    my ($self) = @_;
+
+    $_->write_header for @{ $self->output_format_contexts };
+
+    while ($self->read_frame) {
+        warn "read frame";
+    }
+
+    $_->write_trailer for @{ $self->output_format_contexts };
+}
+
+=item read_frame
+
+Reads a frame from input and encodes it to output streams
+
+=cut
+sub read_frame {
+    my ($self) = @_;
+
+    my $pkt = $self->input_format_context->read_frame;
+    if (! $pkt->success) {
+        warn "reached end of input";
+        return 0;
+    }
+
+    if (! $pkt->avpacket) {
+        warn "didn't get packet";
+        next;
+    }
+
+    my $stream_index = $pkt->stream_index;
+    unless (defined $stream_index) {
+        warn "didn't get stream index from packet";
+        next;
+    }
+
+    # don't bother with output if no corresponding output streams
+    next unless grep { $_->streams->[$stream_index] }
+        @{ $self->output_format_contexts };
+
+    # get input stream
+    my $input_stream = $self->input_format_context->get_stream($stream_index);
+    unless ($input_stream) {
+        warn "Output streams exist for index $stream_index but no input stream with that index was found";
+        next;
+    }
+
+    foreach my $output_ctx (@{ $self->output_format_contexts }) {
+        my $output_streams = $output_ctx->streams->[$stream_index];
+        next unless $output_streams;
+
+        $_->write_frame($pkt, $input_stream) foreach @$output_streams;
+    }
+}
+
 sub close_input {
     my ($self) = @_;
     
@@ -184,44 +245,6 @@ sub DEMOLISH {
 
     $self->close_input;
     $self->close_outputs;
-}
-
-=item decode_frame
-
-Reads a frame and streams it.
-
-=cut
-sub decode_frame {
-    my ($self) = @_;
-
-    # decode frame from input streams
-    for (my $index = 0; $index < $self->stream_count; $index++) {
-        # don't bother decoding input stream if there are no
-        # corresponding output streams
-        my $output_streams = $self->output_streams->[$index];
-        next unless $output_streams;
-
-        # get input stream
-        my $input_stream = $self->get_stream($index);
-        unless ($input_stream) {
-            warn "Output streams exist for index $index but no input stream with that index was found";
-            next;
-        }
-
-        # decode frame from input stream
-        if ($input_stream->is_video_stream) {
-            my $frame = $input_stream->decode_video_frame or next;
-
-            # send frame to output streams to be encoded
-            $_->encode_video_frame($frame) foreach @$output_streams;
-        } elsif ($input_stream->is_audio_stream) {
-            # decode frame from input stream
-            my $frame = $input_stream->decode_audio_frame or next;
-
-            # send frame to output streams to be encoded
-            $_->encode_audio_frame($frame) foreach @$output_streams;
-        }
-    }
 }
 
 =back

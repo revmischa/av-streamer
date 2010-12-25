@@ -20,20 +20,20 @@ DESCRIPTION
 
 This module is an attempt to encapsulate high-level media streaming
 operations in a perl module. It does this by wrapping libav* in an XS
-interface which is utilized by various modules.
+interface which is utilized by various sub-modules.
 
 To understand how this module is put together, you must be familiar
 with how media files are structured and how libav* reflects this.
 
-A media file or media stream is generally encapsulated in a
-"container" format which can contain any number of video, audio or
-subtitle streams. For a concrete example think of a DVD, which lets
-you select different audio or subtitles for the same video
-stream. Common container formats are MOV, AVI, WebM/Matroska, FLV,
-MPEG TS (transport stream), OGG. 
-These containers are handled by libavformat which understands how to
-mux and demux streams inside a given container. A container open for
-reading or writing with associated parameters is represented by an
+A media file or media stream is generally encapsulated in a transport
+format which can contain any number of video, audio or subtitle
+streams. For a concrete example think of a DVD (containing a MPEG TS),
+which lets you select different audio or subtitles for the same video
+stream. Common transport or container formats are MOV, AVI,
+WebM/Matroska, FLV, MPEG TS (transport stream), OGG.  These transports
+are handled by libavformat which understands how to mux and demux
+streams inside a given container. A container open for reading or
+writing with associated parameters is represented by an
 AVFormatContext.
 
 Each stream inside a container contains video or audio data which is
@@ -45,30 +45,30 @@ AVCodecContext which is an AVCodec reference plus encoding/decoding
 parameters.
 
 Example media format (DVD):
-|-------------------------------------|
-| Container (DVD)                     |
-|                                     |
-|    |------------------|             |
-|    | stream 1 (video) |             |
-|    |------------------|             |
-|                                     |
-|    |--------------------------|     |
-|    | stream 2 (english audio) |     |
-|    |--------------------------|     |
-|                                     |
-|    |--------------------------|     |
-|    | stream 2 (german audio)  |     |
-|    |--------------------------|     |
-|                                     |
-|    |------------------------------| |
-|    | stream 3 (english subtitles) | |
-|    |------------------------------| |
-|                                     |
-|    |------------------------------| |
-|    | stream 4 (german subtitles)  | |
-|    |------------------------------| |
-|                                     |
-|-------------------------------------|
+|--------------------------------------|
+| Transport (MPEG-TS)                  |
+|                                      |
+|    |------------------|              |
+|    | stream 1 (video) |              |
+|    |------------------|              |
+|                                      |
+|    |--------------------------|      |
+|    | stream 2 (english audio) |      |
+|    |--------------------------|      |
+|                                      |
+|    |--------------------------|      |
+|    | stream 2 (german audio)  |      |
+|    |--------------------------|      |
+|                                      |
+|    |------------------------------|  |
+|    | stream 3 (english subtitles) |  |
+|    |------------------------------|  |
+|                                      |
+|    |------------------------------|  |
+|    | stream 4 (german subtitles)  |  |
+|    |------------------------------|  |
+|                                      |
+|--------------------------------------|
 
 If you were to read in an AVI file and decode it for playback with
 libavformat and libavcodec, you would first create an AVFormatContext

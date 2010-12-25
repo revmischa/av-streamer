@@ -5,6 +5,7 @@ AVCodec         *                 T_PTROBJ_SPECIAL
 AVStream        *                 T_PTROBJ_SPECIAL
 AVOutputFormat  *                 T_PTROBJ_SPECIAL
 AVFrame         *                 T_PTROBJ_SPECIAL
+AVPacket        *                 T_PTROBJ_SPECIAL
 FFS_FrameBuffer *                 T_PTROBJ_SPECIAL
 PixelFormat                       T_IV
 CodecID                           T_IV

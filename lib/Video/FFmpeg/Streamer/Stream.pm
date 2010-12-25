@@ -15,8 +15,6 @@ stream.
 
 has 'avstream' => (
     is => 'ro',
-    lazy => 1,
-    builder => 'build_avstream',
     predicate => 'avstream_exists',
     clearer => 'clear_avstream',
 );
@@ -41,7 +39,7 @@ has 'codec_name' => (
     isa => 'Str',
 );
 
-has 'codec_ctx' => (
+has 'avcodec_ctx' => (
     is => 'ro',
     isa => 'AVCodecContext',
     builder => 'build_codec_ctx',
@@ -59,6 +57,12 @@ has 'stream_copy' => (
     default => 0,
 );
 
+has 'codec_open' => (
+    is => 'rw',
+    isa => 'Bool',
+    default => 0,
+);
+
 # are we holding a reference to an existing stream or did we allocate
 # memory for a new stream (and need to free it later)
 has 'avstream_allocated' => (
@@ -67,7 +71,7 @@ has 'avstream_allocated' => (
     default => 0,
 );
 
-sub build_avstream {
+sub create_avstream {
     my ($self) = @_;
 
     Carp::confess("Attempting to create new AVStream in the base class");
@@ -83,6 +87,14 @@ sub build_codec_ctx {
     }
 }
 
+sub needs_encoding {
+    my ($self) = @_;
+
+    return 0 if $self->codec_name eq 'copy';
+    return 0 if $self->stream_copy;
+    return 1;
+}
+
 sub build_index {
     my ($self) = @_;
 
@@ -94,11 +106,17 @@ sub BUILD {
 
     return unless $self->avstream_exists;
 
-    # we are instantiating a new Stream and have an AVStream
-    # this is an input stream and we need to open the decoder
+    $self->open_decoder;
+}
+
+# find stream codec and properties, open decoder
+sub open_decoder {
+    my ($self) = @_;
+
+    return if $self->codec_open;
 
     my $avstream = $self->avstream;
-    my $avcodec_ctx = $self->codec_ctx;
+    my $avcodec_ctx = $self->avcodec_ctx;
 
     # make sure we have a codec context
     unless ($avcodec_ctx) {
@@ -118,10 +136,19 @@ sub BUILD {
         warn "Could not open decoder for AVStream " . $self->avstream . " codec ID $codec_id";
         return;
     }
+    $self->codec_open(1);
 
     # extract info from the AVStream and codec context:
     $self->bit_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_bitrate($avcodec_ctx));
     $self->codec_name(Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec_name($avcodec_ctx));
+    $self->width(Video::FFmpeg::Streamer::ffs_get_codec_ctx_width($avcodec_ctx));
+    $self->height(Video::FFmpeg::Streamer::ffs_get_codec_ctx_height($avcodec_ctx));
+    $self->base_den(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_den($avcodec_ctx));
+    $self->base_num(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_num($avcodec_ctx));
+    $self->pixel_format(Video::FFmpeg::Streamer::ffs_get_codec_ctx_pixfmt($avcodec_ctx));
+    $self->gop_size(Video::FFmpeg::Streamer::ffs_get_codec_ctx_gopsize($avcodec_ctx));
+
+    warn "opened decoder for codec name " . $self->codec_name;
 }
 
 =head2 METHODS
@@ -149,13 +176,16 @@ sub is_audio_stream {
 sub destroy_stream {
     my ($self) = @_;
 
+    if ($self->codec_open) {
+        Video::FFmpeg::Streamer::ffs_close_codec($self->avcodec_ctx);
+        $self->codec_open(0);
+    }
+
     Video::FFmpeg::Streamer::ffs_destroy_stream($self->avstream)
         if $self->avstream_exists && $self->avstream_allocated;
 
     $self->clear_avstream;
     $self->avstream_allocated(0);
-
-    warn "avstream destroyed";
 }
 
 sub DEMOLISH {

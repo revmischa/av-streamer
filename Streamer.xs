@@ -107,6 +107,14 @@ CodecID codec_id;
     }
     OUTPUT: RETVAL
 
+void
+ffs_close_codec(codec_ctx)
+AVCodecContext *codec_ctx;
+    CODE:
+    {
+        avcodec_close(codec_ctx);
+    }
+
 unsigned int
 ffs_stream_count(fmt)
 AVFormatContext* fmt;
@@ -227,39 +235,100 @@ AVStream* stream;
         RETVAL = stream->codec;
     OUTPUT: RETVAL
 
-bool_t
-ffs_open_codec(codec_ctx)
-AVCodecContext* codec_ctx;
+AVPacket*
+ffs_alloc_avpacket()
+    CODE:
+        RETVAL = av_malloc(sizeof(AVPacket));
+    OUTPUT: RETVAL
+
+void
+ffs_init_avpacket(pkt)
+AVPacket *pkt;
+    CODE:
+        av_init_packet(pkt);
+
+int
+ffs_get_avpacket_stream_index(pkt)
+AVPacket *pkt;
+    CODE:
+        RETVAL = pkt->stream_index;
+    OUTPUT: RETVAL
+
+void
+ffs_destroy_avpacket(pkt)
+AVPacket* pkt;
     CODE:
     {
-        /* ffs_open_codec(codec_ctx) attempts to find a decoder for this
-         codec and open it. returns success/failure */
+        av_freep(pkt);
+    }
 
-        /* find the decoder for the video stream */
-        AVCodec *codec = avcodec_find_decoder(codec_ctx->codec_id);
-        if ( codec == NULL ) {
-            /* could not find a decoder for this codec */
-            RETVAL = 0;
-            return;
-        }
+void
+ffs_free_avpacket_data(pkt)
+AVPacket* pkt;
+    CODE:
+        av_free_packet(pkt);
 
-        /* open codec */
-        if ( avcodec_open(codec_ctx, codec) < 0 ) {
-            /* failed to open the codec */
-            RETVAL = 0;
-            return;
-        }
+int
+ffs_read_frame(ctx, pkt)
+AVFormatContext *ctx;
+AVPacket *pkt;
+    CODE:
+    {
+        /* read one frame, wants allocated pkt for storage. call
+            ffs_free_avpacket when done with the pkt */
 
-        RETVAL = 1;
+        RETVAL = av_read_frame(ctx, pkt);
+    }
+    OUTPUT: RETVAL
+
+int
+ffs_write_frame(ctx, pkt)
+AVFormatContext *ctx;
+AVPacket *pkt;
+int stream_index;
+    CODE:
+    {
+        /* write frame to output. you may need to encode the frame first */
+        printf("writing frame\n");
+        RETVAL = av_interleaved_write_frame(ctx, pkt);
     }
     OUTPUT: RETVAL
 
 void
-ffs_close_codec(codec_ctx)
-AVCodecContext* codec_ctx;
+ffs_raw_stream(ipkt, opkt, ist, ost)
+AVPacket *ipkt;
+AVPacket *opkt;
+AVStream *ist;
+AVStream *ost;
     CODE:
     {
-        avcodec_close(codec_ctx);
+        /* basically copies input packet into output packet, rescaling time */
+
+        /* can use as starting offset later i think */
+        int start_time = 0;
+        int64_t ost_tb_start_time = av_rescale_q(start_time, AV_TIME_BASE_Q, ost->time_base);
+
+        opkt->stream_index = ost->index;
+        if (ipkt->pts != AV_NOPTS_VALUE)
+            opkt->pts = av_rescale_q(ipkt->pts, ist->time_base, ost->time_base) - ost_tb_start_time;
+        else
+            opkt->pts = AV_NOPTS_VALUE;
+ 
+  /* TODO: where does ist->pts come from ? */
+   /*        if (ipkt->dts == AV_NOPTS_VALUE)
+            opkt->dts = av_rescale_q(ist->pts, AV_TIME_BASE_Q, ost->time_base);
+        else 
+  */
+            opkt->dts = av_rescale_q(ipkt->dts, ist->time_base, ost->time_base);
+            
+        opkt->dts -= ost_tb_start_time;
+        opkt->duration = av_rescale_q(ipkt->duration, ist->time_base, ost->time_base);
+        opkt->flags = ipkt->flags;
+
+        opkt->data = ipkt->data;
+        opkt->size = ipkt->size;
+
+        ost->codec->frame_number++;
     }
 
 bool_t
@@ -570,8 +639,102 @@ AVFormatContext* ctx;
     }    
 
 AVStream*
-ffs_create_video_stream(fmt, codec_name, stream_copy, width, height, bitrate, base_num, base_den, gopsize, pixfmt)
-AVFormatContext* fmt;
+ffs_create_video_stream(ofmt)
+AVFormatContext *ofmt;
+    CODE:
+    {
+        AVStream *vs = NULL;
+
+        vs = av_new_stream(ofmt, 0);
+        if (! vs) {
+            fprintf(stderr, "av_new_stream failed\n");
+            XSRETURN_UNDEF;
+        }
+
+        RETVAL = vs;
+    }
+    OUTPUT: RETVAL
+
+int
+ffs_copy_video_stream_params(ofmt, istream, ostream)
+AVStream *istream;
+AVStream *ostream;
+AVFormatContext *ofmt;
+    CODE:
+    {
+        AVCodecContext *ocodec, *icodec;
+
+        icodec = istream->codec;
+        ocodec = ostream->codec;
+
+        ostream->disposition = istream->disposition;
+        ocodec->bits_per_raw_sample = icodec->bits_per_raw_sample;
+        ocodec->chroma_sample_location = icodec->chroma_sample_location;
+
+        uint64_t extra_size = (uint64_t)icodec->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE;
+        if (extra_size > INT_MAX)
+            XSRETURN_UNDEF;
+
+        ocodec->codec_id = icodec->codec_id;
+        ocodec->codec_type = icodec->codec_type;
+
+        if (! ocodec->codec_tag) {
+          if (! ofmt->oformat->codec_tag
+              || av_codec_get_id (ofmt->oformat->codec_tag, icodec->codec_tag) == ocodec->codec_id
+              || av_codec_get_tag(ofmt->oformat->codec_tag, icodec->codec_id) <= 0)
+            ocodec->codec_tag = icodec->codec_tag;
+        }
+ 
+        ocodec->bit_rate       = icodec->bit_rate;
+        ocodec->rc_max_rate    = icodec->rc_max_rate;
+        ocodec->rc_buffer_size = icodec->rc_buffer_size;
+        ocodec->extradata      = av_mallocz(extra_size);
+        if (! ocodec->extradata)
+            XSRETURN_UNDEF;
+
+        memcpy(ocodec->extradata, icodec->extradata, icodec->extradata_size);
+        ocodec->extradata_size = icodec->extradata_size;
+        if (av_q2d(icodec->time_base)*icodec->ticks_per_frame > av_q2d(istream->time_base) && av_q2d(istream->time_base) < 1.0/1000){
+          ocodec->time_base = icodec->time_base;
+          ocodec->time_base.num *= icodec->ticks_per_frame;
+          av_reduce(&ocodec->time_base.num, &ocodec->time_base.den,
+                    ocodec->time_base.num, ocodec->time_base.den, INT_MAX);
+        } else {
+          ocodec->time_base = istream->time_base;
+        }
+
+        switch (ocodec->codec_type) {
+            case AVMEDIA_TYPE_AUDIO:
+              ocodec->channel_layout = icodec->channel_layout;
+              ocodec->sample_rate = icodec->sample_rate;
+              ocodec->channels = icodec->channels;
+              ocodec->frame_size = icodec->frame_size;
+              ocodec->block_align = icodec->block_align;
+              if (ocodec->block_align == 1 && ocodec->codec_id == CODEC_ID_MP3)
+                  ocodec->block_align= 0;
+                  if (ocodec->codec_id == CODEC_ID_AC3)
+                    ocodec->block_align= 0;
+                  break;
+             case AVMEDIA_TYPE_VIDEO:
+                 ocodec->pix_fmt = icodec->pix_fmt;
+                 ocodec->width = icodec->width;
+                 ocodec->height = icodec->height;
+                 ocodec->has_b_frames = icodec->has_b_frames;
+                 break;
+             case AVMEDIA_TYPE_SUBTITLE:
+                 ocodec->width = icodec->width;
+                 ocodec->height = icodec->height;
+                 break;
+        }
+
+        RETVAL = 1;
+    }
+    OUTPUT: RETVAL
+
+int
+ffs_set_video_stream_params(ofmt, vs, codec_name, stream_copy, width, height, bitrate, base_num, base_den, gopsize, pixfmt)
+AVFormatContext* ofmt;
+AVStream *vs;
 const char *codec_name;
 unsigned short stream_copy;
 unsigned int width;
@@ -583,17 +746,13 @@ unsigned int gopsize;
 int pixfmt;
     CODE:
     {
-        AVStream *vs = NULL;
         int i;
 
         if (! pixfmt)
             pixfmt = FFS_DEFAULT_PIXFMT;
                 
-        if (! codec_name && fmt->oformat->video_codec == CODEC_ID_NONE)
-            XSRETURN_UNDEF;
-
-        vs = av_new_stream(fmt, 0);
-        if (! vs) {
+        if (! codec_name && ofmt->oformat->video_codec == CODEC_ID_NONE) {
+            fprintf(stderr, "No encoder specified for ffs_set_video_stream_params\n");
             XSRETURN_UNDEF;
         }
 
@@ -603,9 +762,14 @@ int pixfmt;
 
         if (codec_name) {
             AVCodec *output_codec = avcodec_find_encoder_by_name(codec_name);
+            if (! output_codec) {
+                fprintf(stderr, "failed to find encoder for %s\n", codec_name);
+                XSRETURN_UNDEF;
+            }
+
             c->codec = output_codec;
         } else {
-            c->codec_id = fmt->oformat->video_codec;
+            c->codec_id = ofmt->oformat->video_codec;
         }
 
         c->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -631,27 +795,27 @@ int pixfmt;
         }
 
         /* some formats want stream headers to be separate */
-        if (fmt->oformat->flags & AVFMT_GLOBALHEADER)
+        if (ofmt->oformat->flags & AVFMT_GLOBALHEADER)
             c->flags |= CODEC_FLAG_GLOBAL_HEADER;
             
         /* open video stream codec */
         AVCodec *codec;
         codec = avcodec_find_encoder(c->codec_id);
         if (! codec) {
-            fprintf(stderr, "failed to find encoder");
-            return;
+            fprintf(stderr, "failed to find encoder for id %d\n", c->codec_id);
+            XSRETURN_UNDEF;
         }
             
-        dump_format(fmt, 0, "output", 1);
+        dump_format(ofmt, 0, "output", 1);
             
         if (avcodec_open(c, codec) < 0) {
-            fprintf(stderr, "failed to open codec");
-            return;
+            fprintf(stderr, "failed to open codec\n");
+            XSRETURN_UNDEF;
         }
 
-        RETVAL = vs;
+        RETVAL = 1;
     }
-    OUTPUT: RETVAL
+    OUTPUT: RETVAL        
     
 int
 ffs_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)

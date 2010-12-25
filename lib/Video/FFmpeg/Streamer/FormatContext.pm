@@ -84,6 +84,15 @@ has 'streams' => (
     default => sub { [] },
 );
 
+# pre-allocated avpacket used to store current frame
+has 'avpacket' => (
+    is => 'rw',
+    isa => 'AVPacket',
+    lazy => 1,
+    builder => 'build_avpacket',
+    predicate => 'avpacket_exists',
+);
+
 =back
 
 =head2 METHODS
@@ -93,11 +102,17 @@ has 'streams' => (
 =cut
 
 
+
+# allocate an AVPacket for saving packets read from input
+sub build_avpacket {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+}
+
 # create avformatctx, open output file
 sub build_avformat_ctx {
     my ($self) = @_;
-
-    warn "Building format ctx";
 
     if ($self->output_opened) {
         # TODO: should gracefully handle building a new format ctx
@@ -130,6 +145,7 @@ sub build_avformat_ctx {
     $self->output_opened(1);
     $self->output_format($ofmt);
     $self->avformat($fmt);
+    warn "build context";
 
     return $fmt;
 }
@@ -233,22 +249,34 @@ sub add_stream {
 
     $opts->{codec_name} ||= $input_stream->codec_name;
 
-    if ($input_stream->is_video_stream) {
-        $opts->{width}        ||= $input_stream->width;
-        $opts->{height}       ||= $input_stream->height;
-        $opts->{gop_size}     ||= $input_stream->gop_size;
-        $opts->{base_num}     ||= $input_stream->base_num;
-        $opts->{base_den}     ||= $input_stream->base_den;
-        $opts->{pixel_format} ||= $input_stream->pixel_format;
-        $output_stream = Video::FFmpeg::Streamer::Stream::Video->new($opts);
-    } elsif ($input_stream->is_audio_stream) {
-        $opts->{channels}    ||= $input_stream->channels;
-        $opts->{sample_rate} ||= $input_stream->sample_rate;
-        $output_stream = Video::FFmpeg::Streamer::Stream::Audio->new($opts);
-    } else {
-        warn "Unknown stream type for index $index";
-        return;
+    my $stream_class;
+
+    # set default params from input, not used if codec=copy
+    {
+        my @stream_params;
+
+        # prepare output stream
+        if ($input_stream->is_video_stream) {
+            @stream_params = qw/width height gop_size base_num base_den pixel_format/;
+            $stream_class = 'Video::FFmpeg::Streamer::Stream::Video';
+        } elsif ($input_stream->is_audio_stream) {
+            @stream_params = qw/channels sample_rate/;
+            $stream_class = 'Video::FFmpeg::Streamer::Stream::Audio';
+        } else {
+            warn "Unknown stream type for index $index";
+            return;
+        }
+
+        # copy stream params from input to output
+        foreach my $param (@stream_params) {
+            my $val = $input_stream->$param;
+            next unless defined $val;
+            $opts->{$param} ||= $val;
+        }
     }
+
+    $output_stream = $stream_class->new($opts);
+    $output_stream->create_avstream($input_stream);
 
     $self->streams->[$index] ||= [];
     my $streams = $self->streams->[$index];
@@ -309,18 +337,52 @@ sub get_stream {
     return $stream;
 }
 
+# read one frame, returns $packet
+sub read_frame {
+    my ($self) = @_;
+
+    my $format_ctx = $self->avformat;
+    my $pkt = $self->avpacket;
+    my $ret = Video::FFmpeg::Streamer::ffs_read_frame($format_ctx, $pkt);
+
+    warn "decode frame pkt=$pkt ret=$ret";
+
+    my $retpkt = Video::FFmpeg::Streamer::Packet->new(
+        avpacket => $pkt,
+        success  => ($ret > -1),
+    );
+
+    return $retpkt;
+}
+
 sub stream_count {
     my ($self) = @_;
 
     return Video::FFmpeg::Streamer::ffs_stream_count($self->avformat);
 }
 
+sub write_header {
+    my ($self) = @_;
+
+    warn "writing header for format " . $self->avformat;
+    return Video::FFmpeg::Streamer::ffs_write_header($self->avformat);
+}
+
+sub write_trailer {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_write_trailer($self->avformat);
+}
+
 sub DEMOLISH {
     my ($self) = @_;
 
+    Video::FFmpeg::Streamer::ffs_destroy_avpacket($self->avpacket)
+        if $self->avpacket_exists;
+
     return unless $self->avformat_exists;
-    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat);
-    warn "formatcontext destroyed";
+    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
+        if $self->avformat_exists;
 }
 
 =back
