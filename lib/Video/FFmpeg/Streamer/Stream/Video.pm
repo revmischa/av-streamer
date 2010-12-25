@@ -79,6 +79,8 @@ sub write_frame {
 after 'create_avstream' => sub {
     my ($self, $istream) = @_;
 
+    my $oavstream = $self->avstream;
+
     if ($self->stream_copy) {
         my $ok = Video::FFmpeg::Streamer::ffs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
@@ -86,7 +88,7 @@ after 'create_avstream' => sub {
         my $ok = Video::FFmpeg::Streamer::ffs_set_video_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
-            $codec_name,
+            $self->codec_name,
             $self->stream_copy,
             $self->width,
             $self->height,
@@ -99,6 +101,6 @@ after 'create_avstream' => sub {
 
         die "failed to set video stream params" unless $ok;
     }
-}
+};
 
 __PACKAGE__->meta->make_immutable;
