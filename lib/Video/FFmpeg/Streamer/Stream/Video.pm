@@ -47,31 +47,6 @@ has 'buffer_size' => (
     lazy => 1,
 );
 
-# write video packet $ipkt, encoding video if necessary
-sub write_frame {
-    my ($self, $ipkt, $istream) = @_;
-
-    my $format_ctx = $self->format_ctx->avformat;
-
-    my $oavpkt = Video::FFmpeg::Streamer::ffs_alloc_avpacket();
-    Video::FFmpeg::Streamer::ffs_init_avpacket($oavpkt);
-
-    if ($self->needs_encoding) {
-        warn "need to video transcode";
-        $self->encode_packet($ipkt);
-    } else {
-        Video::FFmpeg::Streamer::ffs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
-    }
-    
-    # write packet to output
-    my $ret = Video::FFmpeg::Streamer::ffs_write_frame($format_ctx, $oavpkt);
-
-    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
-    Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
-
-    return $ret > -1;
-}
-
 after 'create_avstream' => sub {
     my ($self, $istream) = @_;
 

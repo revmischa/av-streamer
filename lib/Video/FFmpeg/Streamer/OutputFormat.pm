@@ -18,6 +18,10 @@ has 'ofmt' => (
 sub find_output_format {
     my ($class, $uri, $format) = @_;
 
+    $uri ||= '';
+    $format ||= '';
+    croak "uri or format is required" unless $uri || $format;
+
     my $ofmt = Video::FFmpeg::Streamer::ffs_find_output_format($uri, $format);
     return unless $ofmt;
 

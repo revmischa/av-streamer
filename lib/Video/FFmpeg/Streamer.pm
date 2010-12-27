@@ -178,19 +178,19 @@ sub stream {
 
     $_->write_header for @{ $self->output_format_contexts };
 
-    while ($self->read_frame) {
+    while ($self->stream_frame) {
 
     }
 
     $_->write_trailer for @{ $self->output_format_contexts };
 }
 
-=item read_frame
+=item stream_frame
 
 Reads a frame from input and encodes it to output streams
 
 =cut
-sub read_frame {
+sub stream_frame {
     my ($self) = @_;
 
     my $pkt = $self->input_format_context->read_frame;

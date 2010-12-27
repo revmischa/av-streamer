@@ -156,14 +156,43 @@ sub open_decoder {
     # extract info from the AVStream and codec context:
     $self->bit_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_bitrate($avcodec_ctx));
     $self->codec_name(Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec_name($avcodec_ctx));
-    $self->width(Video::FFmpeg::Streamer::ffs_get_codec_ctx_width($avcodec_ctx));
-    $self->height(Video::FFmpeg::Streamer::ffs_get_codec_ctx_height($avcodec_ctx));
-    $self->base_den(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_den($avcodec_ctx));
-    $self->base_num(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_num($avcodec_ctx));
-    $self->pixel_format(Video::FFmpeg::Streamer::ffs_get_codec_ctx_pixfmt($avcodec_ctx));
-    $self->gop_size(Video::FFmpeg::Streamer::ffs_get_codec_ctx_gopsize($avcodec_ctx));
+    if ($self->is_video_stream) {
+        $self->width(Video::FFmpeg::Streamer::ffs_get_codec_ctx_width($avcodec_ctx));
+        $self->height(Video::FFmpeg::Streamer::ffs_get_codec_ctx_height($avcodec_ctx));
+        $self->base_den(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_den($avcodec_ctx));
+        $self->base_num(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_num($avcodec_ctx));
+        $self->pixel_format(Video::FFmpeg::Streamer::ffs_get_codec_ctx_pixfmt($avcodec_ctx));
+        $self->gop_size(Video::FFmpeg::Streamer::ffs_get_codec_ctx_gopsize($avcodec_ctx));
+    } else {
+        $self->channels(Video::FFmpeg::Streamer::ffs_get_codec_ctx_channels($avcodec_ctx));
+        $self->sample_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_sample_rate($avcodec_ctx));
+    }
+}
 
-    warn "opened decoder for codec name " . $self->codec_name;
+
+# write packet $ipkt, encoding video if necessary
+sub write_frame {
+    my ($self, $ipkt, $istream) = @_;
+
+    my $format_ctx = $self->format_ctx->avformat;
+
+    my $oavpkt = Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+    Video::FFmpeg::Streamer::ffs_init_avpacket($oavpkt);
+
+    if ($self->needs_encoding) {
+        warn "need to transcode";
+        $self->encode_packet($ipkt);
+    } else {
+        Video::FFmpeg::Streamer::ffs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
+    }
+    
+    # write packet to output
+    my $ret = Video::FFmpeg::Streamer::ffs_write_frame($format_ctx, $oavpkt);
+
+    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
+    Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
+
+    return $ret > -1;
 }
 
 =head2 METHODS

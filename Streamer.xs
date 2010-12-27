@@ -467,6 +467,20 @@ AVCodecContext* c;
         RETVAL = c->gop_size;
     OUTPUT: RETVAL
 
+unsigned int
+ffs_get_codec_ctx_channels(c)
+AVCodecContext* c;
+    CODE:
+        RETVAL = c->channels;
+    OUTPUT: RETVAL
+
+unsigned int
+ffs_get_codec_ctx_sample_rate(c)
+AVCodecContext* c;
+    CODE:
+        RETVAL = c->sample_rate;
+    OUTPUT: RETVAL
+
 char*
 ffs_get_frame_line_pointer(frame, y)
 AVFrame* frame;
@@ -758,17 +772,23 @@ int pixfmt;
         vs->stream_copy = stream_copy;
 
         AVCodecContext *c = vs->codec;
+        AVCodec *codec = NULL;
 
         if (codec_name) {
-            AVCodec *output_codec = avcodec_find_encoder_by_name(codec_name);
-            if (! output_codec) {
-                fprintf(stderr, "failed to find encoder for %s\n", codec_name);
+            /* look up codec */
+            codec = avcodec_find_encoder_by_name(codec_name);
+            if (! codec) {
+                fprintf(stderr, "failed to find encoder for codec named '%s'\n", codec_name);
                 XSRETURN_UNDEF;
             }
-
-            c->codec = output_codec;
         } else {
-            c->codec_id = ofmt->oformat->video_codec;
+            /* use default codec for output format */
+            codec = avcodec_find_encoder(ofmt->oformat->video_codec);
+            if (! codec) {
+                fprintf(stderr, "failed to find default encoder for codec id %d\n", c->codec_id);
+                XSRETURN_UNDEF;
+            }
+            printf("using default codec\n");
         }
 
         c->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -784,7 +804,7 @@ int pixfmt;
         c->time_base = (AVRational){ base_num / i, base_den / i };
         
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
-        //c->pix_fmt = pixfmt;
+        c->pix_fmt = pixfmt;
 
         printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
             width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);
@@ -796,21 +816,14 @@ int pixfmt;
         /* some formats want stream headers to be separate */
         if (ofmt->oformat->flags & AVFMT_GLOBALHEADER)
             c->flags |= CODEC_FLAG_GLOBAL_HEADER;
-            
+
         /* open video stream codec */
-        AVCodec *codec;
-        codec = avcodec_find_encoder(c->codec_id);
-        if (! codec) {
-            fprintf(stderr, "failed to find encoder for id %d\n", c->codec_id);
-            XSRETURN_UNDEF;
-        }
-            
-        dump_format(ofmt, 0, "output", 1);
-            
         if (avcodec_open(c, codec) < 0) {
             fprintf(stderr, "failed to open codec\n");
             XSRETURN_UNDEF;
         }
+
+        dump_format(ofmt, 0, "output", 1);
 
         RETVAL = 1;
     }
