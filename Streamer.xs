@@ -62,7 +62,7 @@ char* uri;
         /* make sure we can read the stream */
         int ret = av_find_stream_info(formatCtx);
         if ( ret < 0 ) {
-            fprintf("Failed to find codec parameters for input %s\n", uri);
+            fprintf(stderr, "Failed to find codec parameters for input %s\n", uri);
             XSRETURN_UNDEF;
         }
 
@@ -177,7 +177,7 @@ int idx;
     OUTPUT: RETVAL
 
 AVFrame*
-ffs_alloc_frame()
+ffs_alloc_avframe()
     CODE:
     {
         /* allocate space for an AVFrame struct */
@@ -186,7 +186,7 @@ ffs_alloc_frame()
     OUTPUT: RETVAL
 
 void
-ffs_dealloc_frame(frame)
+ffs_dealloc_avframe(frame)
 AVFrame* frame;
     CODE:
     {
@@ -202,6 +202,15 @@ FFS_FrameBuffer* buf;
         /* dellocate frame buffer storage */
         free(buf);
     }
+
+
+FFS_FrameBuffer*
+ffs_alloc_output_buffer(size)
+unsigned int size;
+    CODE:
+        RETVAL = av_mallocz(size);
+    OUTPUT:
+        RETVAL
 
 FFS_FrameBuffer*
 ffs_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
@@ -255,7 +264,7 @@ AVPacket *pkt;
     OUTPUT: RETVAL
 
 void
-ffs_destroy_avpacket(pkt)
+ffs_dealloc_avpacket(pkt)
 AVPacket* pkt;
     CODE:
     {
@@ -269,12 +278,12 @@ AVPacket* pkt;
         av_free_packet(pkt);
 
 int
-ffs_read_frame(ctx, pkt)
+ffs_read_packet(ctx, pkt)
 AVFormatContext *ctx;
 AVPacket *pkt;
     CODE:
     {
-        /* read one frame, wants allocated pkt for storage. call
+        /* read one frame packet, wants allocated pkt for storage. call
             ffs_free_avpacket when done with the pkt */
 
         RETVAL = av_read_frame(ctx, pkt);
@@ -285,7 +294,6 @@ int
 ffs_write_frame(ctx, pkt)
 AVFormatContext *ctx;
 AVPacket *pkt;
-int stream_index;
     CODE:
     {
         /* write frame to output. you may need to encode the frame first */
@@ -330,79 +338,74 @@ AVStream *ost;
         ost->codec->frame_number++;
     }
 
-bool_t
-ffs_decode_frames(format_ctx, codec_ctx, stream_index, dest_pixfmt, src_frame, dst_frame, dst_frame_buffer, frame_count, decoded_cb)
+int
+ffs_encode_video_frame(format_ctx, ostream, iframe, opkt, obuf, obuf_size)
 AVFormatContext* format_ctx;
-AVCodecContext* codec_ctx;
-unsigned int stream_index;
-int dest_pixfmt;
-AVFrame* src_frame;
-AVFrame* dst_frame;
-FFS_FrameBuffer* dst_frame_buffer;
-unsigned int frame_count;
-CV* decoded_cb;
+AVStream* ostream;
+AVFrame* iframe;
+AVPacket* opkt;
+FFS_FrameBuffer* obuf;
+unsigned int obuf_size;
     CODE:
     {
-        AVPacket packet;
-        unsigned int frameFinished, w, h;
-        unsigned int frame = 0;
-        struct SwsContext *img_convert_ctx = NULL;
+        /* TODO: image resampling with sws_scale() */
+        int status;
+        AVCodecContext *enc = ostream->codec;
+
+        /* encode frame into opkt */
+        opkt->stream_index = ostream->index;
+        status = avcodec_encode_video(enc, obuf, obuf_size, iframe);
         
-        while( av_read_frame(format_ctx, &packet) >= 0 ) {
-            if (packet.stream_index != stream_index)
-                continue;
+        RETVAL = status;
+
+        if (status > 0) {
+            opkt->size = status;
+            opkt->data = obuf;
             
-            avcodec_decode_video(codec_ctx, src_frame, &frameFinished, 
-                packet.data, packet.size);
+            if(enc->coded_frame->pts != AV_NOPTS_VALUE)
+                opkt->pts= av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);
 
-            if (! frameFinished) 
-                continue;
-                
-            if (img_convert_ctx == NULL) {
-                w = codec_ctx->width;
-                h = codec_ctx->height;
-                
-                /* create context to convert to dest pixformat */
-                img_convert_ctx = sws_getContext(w, h, 
-                				codec_ctx->pix_fmt, 
-                				w, h, dest_pixfmt, SWS_BICUBIC,
-                				NULL, NULL, NULL);
-
-                if (img_convert_ctx == NULL) {
-                    RETVAL = 0;
-                	fprintf(stderr, "Cannot initialize the conversion context!\n");
-                	av_free_packet(&packet);
-                    return;
-                }
-			}
-			
-            sws_scale(img_convert_ctx, src_frame->data, src_frame->linesize, 0, 
-                codec_ctx->height, dst_frame->data, dst_frame->linesize);
-                
-            /* we now have a decoded frame */
-            frame++;
-            if (frame_count && frame > frame_count)
-                break;
-            
-            /* call perl CV callback */
-        	dSP;
-        	ENTER;
-        	SAVETMPS;
-        	PUSHMARK(SP);
-        	XPUSHs( sv_2mortal( newSVuv( frame )));
-        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->width )));
-        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->height )));
-        	PUTBACK;
-
-        	call_sv( decoded_cb, G_DISCARD );
-	
-        	FREETMPS;
-        	LEAVE;
-        }
-        
-        av_free_packet(&packet);
+            if(enc->coded_frame->key_frame)
+                opkt->flags |= AV_PKT_FLAG_KEY;
+       }
     }
     OUTPUT: RETVAL
+
+int
+ffs_decode_video_frame(format_ctx, istream, ipkt, oframe)
+AVFormatContext* format_ctx;
+AVStream* istream;
+AVPacket* ipkt;
+AVFrame* oframe;
+     CODE:
+     {
+         int status, frame_was_decoded;
+
+         /* reset frame to default values */
+         avcodec_get_frame_defaults(oframe);
+
+         /* ??? istream->codec->reordered_opaque = pkt_pts;
+         pkt_pts = AV_NOPTS_VALUE; */
+
+         status = avcodec_decode_video2(istream->codec,
+             oframe, &frame_was_decoded, ipkt);
+         RETVAL = status;
+
+         istream->quality = oframe->quality;
+
+         if (status < 0) {
+             /* error */
+             return;
+         }
+
+         if (! frame_was_decoded) {
+             /* not enough data to decode a frame */
+             return;
+         }
+
+         RETVAL = 1;
+     }
+     OUTPUT: RETVAL
 
 AVCodec*
 ffs_get_codec_ctx_codec(c)
@@ -613,7 +616,7 @@ AVFormatContext* ctx;
     }
 
 void
-ffs_destroy_stream(stream)
+ffs_dealloc_stream(stream)
 AVStream* stream;
     CODE:
     {
@@ -829,59 +832,6 @@ int pixfmt;
     }
     OUTPUT: RETVAL        
     
-int
-ffs_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)
-AVFormatContext* format_ctx;
-AVCodecContext*  src_codec_ctx;
-AVStream*    stream;
-AVFrame*     frame;
-    CODE:
-    {
-        unsigned int out_size;
-        char *video_outbuf;
-        unsigned int video_outbuf_size;
-        AVPacket pkt;
-        AVCodecContext *dest_codec_ctx;
-        
-        dest_codec_ctx = stream->codec;
-
-        /* buffer size taken from ffmpeg sample output program.
-           not sure about this. to speed things up we should save the output 
-           buffer rather than reallocating it each frame. */
-        video_outbuf_size = 200000;
-        video_outbuf = av_mallocz(video_outbuf_size);
-        
-        RETVAL = 0;
-        
-        out_size = avcodec_encode_video(dest_codec_ctx, video_outbuf, video_outbuf_size, frame);
-        
-        /* if zero size, it means the image was buffered */
-        if (out_size > 0) {
-            av_init_packet(&pkt);
-
-            /* no idea what this is! */
-            if (dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
-                pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
-                dest_codec_ctx->time_base, stream->time_base);
-            }
-
-            if (dest_codec_ctx->coded_frame->key_frame)
-                pkt.flags |= AV_PKT_FLAG_KEY;
-
-            pkt.stream_index = stream->index;
-            pkt.data = video_outbuf;
-            pkt.size = out_size;
-            
-            /* write the compressed frame in the media file */
-            RETVAL = av_interleaved_write_frame(format_ctx, &pkt);
-        } else {
-            RETVAL = 1;
-        }
-
-        av_free(video_outbuf);
-    }
-    OUTPUT: RETVAL
-
 AVStream*
 ffs_new_output_audio_stream(ctx, sample_rate, bit_rate)
 AVFormatContext* ctx;
@@ -932,7 +882,63 @@ unsigned int bit_rate;
         RETVAL = as;
     }
     OUTPUT: RETVAL
-    
+
+
+int
+ffs_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)
+AVFormatContext* format_ctx;
+AVCodecContext*  src_codec_ctx;
+AVStream*    stream;
+AVFrame*     frame;
+    CODE:
+    {
+        /* this function is deprecated */    
+
+        unsigned int out_size;
+        char *video_outbuf;
+        unsigned int video_outbuf_size;
+        AVPacket pkt;
+        AVCodecContext *dest_codec_ctx;
+        
+        dest_codec_ctx = stream->codec;
+
+        /* buffer size taken from ffmpeg sample output program.
+           not sure about this. to speed things up we should save the output 
+           buffer rather than reallocating it each frame. */
+        video_outbuf_size = 200000;
+        video_outbuf = av_mallocz(video_outbuf_size);
+        
+        RETVAL = 0;
+        
+        out_size = avcodec_encode_video(dest_codec_ctx, video_outbuf, video_outbuf_size, frame);
+        
+        /* if zero size, it means the image was buffered */
+        if (out_size > 0) {
+            av_init_packet(&pkt);
+
+            /* no idea what this is! */
+            if (dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
+                pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
+                dest_codec_ctx->time_base, stream->time_base);
+            }
+
+            if (dest_codec_ctx->coded_frame->key_frame)
+                pkt.flags |= AV_PKT_FLAG_KEY;
+
+            pkt.stream_index = stream->index;
+            pkt.data = video_outbuf;
+            pkt.size = out_size;
+            
+            /* write the compressed frame in the media file */
+            RETVAL = av_interleaved_write_frame(format_ctx, &pkt);
+        } else {
+            RETVAL = 1;
+        }
+
+        av_free(video_outbuf);
+    }
+    OUTPUT: RETVAL
+
 int
 ffs_write_frame_to_output_audio_stream(format_ctx, src_codec_ctx, stream, frame)
 AVFormatContext* format_ctx;
@@ -941,6 +947,8 @@ AVStream*    stream;
 AVFrame*     frame;
     CODE:
     {
+        /* this function is deprecated */    
+
         unsigned int out_size;
         char *audio_outbuf;
         unsigned int audio_outbuf_size;
@@ -977,6 +985,82 @@ AVFrame*     frame;
         }
 
         av_free(audio_outbuf);
+    }
+    OUTPUT: RETVAL
+
+bool_t
+ffs_decode_frames(format_ctx, codec_ctx, stream_index, dest_pixfmt, src_frame, dst_frame, dst_frame_buffer, frame_count, decoded_cb)
+AVFormatContext* format_ctx;
+AVCodecContext* codec_ctx;
+unsigned int stream_index;
+int dest_pixfmt;
+AVFrame* src_frame;
+AVFrame* dst_frame;
+FFS_FrameBuffer* dst_frame_buffer;
+unsigned int frame_count;
+CV* decoded_cb;
+    CODE:
+    {
+        /* this function is deprecated */
+
+        AVPacket packet;
+        unsigned int frameFinished, w, h;
+        unsigned int frame = 0;
+        struct SwsContext *img_convert_ctx = NULL;
+        
+        while( av_read_frame(format_ctx, &packet) >= 0 ) {
+            if (packet.stream_index != stream_index)
+                continue;
+            
+            avcodec_decode_video(codec_ctx, src_frame, &frameFinished, 
+                packet.data, packet.size);
+
+            if (! frameFinished) 
+                continue;
+                
+            if (img_convert_ctx == NULL) {
+                w = codec_ctx->width;
+                h = codec_ctx->height;
+                
+                /* create context to convert to dest pixformat */
+                img_convert_ctx = sws_getContext(w, h, 
+                				codec_ctx->pix_fmt, 
+                				w, h, dest_pixfmt, SWS_BICUBIC,
+                				NULL, NULL, NULL);
+
+                if (img_convert_ctx == NULL) {
+                    RETVAL = 0;
+                	fprintf(stderr, "Cannot initialize the conversion context!\n");
+                	av_free_packet(&packet);
+                    return;
+                }
+			}
+			
+            sws_scale(img_convert_ctx, src_frame->data, src_frame->linesize, 0, 
+                codec_ctx->height, dst_frame->data, dst_frame->linesize);
+                
+            /* we now have a decoded frame */
+            frame++;
+            if (frame_count && frame > frame_count)
+                break;
+            
+            /* call perl CV callback */
+        	dSP;
+        	ENTER;
+        	SAVETMPS;
+        	PUSHMARK(SP);
+        	XPUSHs( sv_2mortal( newSVuv( frame )));
+        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->width )));
+        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->height )));
+        	PUTBACK;
+
+        	call_sv( decoded_cb, G_DISCARD );
+	
+        	FREETMPS;
+        	LEAVE;
+        }
+        
+        av_free_packet(&packet);
     }
     OUTPUT: RETVAL
 

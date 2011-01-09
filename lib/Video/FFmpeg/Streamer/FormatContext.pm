@@ -342,12 +342,12 @@ sub get_stream {
 }
 
 # read one frame, returns $packet
-sub read_frame {
+sub read_packet {
     my ($self) = @_;
 
     my $format_ctx = $self->avformat;
     my $pkt = $self->avpacket;
-    my $ret = Video::FFmpeg::Streamer::ffs_read_frame($format_ctx, $pkt);
+    my $ret = Video::FFmpeg::Streamer::ffs_read_packet($format_ctx, $pkt);
 
     my $retpkt = Video::FFmpeg::Streamer::Packet->new(
         avpacket => $pkt,

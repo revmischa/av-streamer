@@ -193,7 +193,7 @@ Reads a frame from input and encodes it to output streams
 sub stream_frame {
     my ($self) = @_;
 
-    my $pkt = $self->input_format_context->read_frame;
+    my $pkt = $self->input_format_context->read_packet;
     if (! $pkt->success) {
         warn "reached end of input";
         return;
@@ -225,7 +225,7 @@ sub stream_frame {
         my $output_streams = $output_ctx->streams->[$stream_index];
         next unless $output_streams;
 
-        $_->write_frame($pkt, $input_stream) foreach @$output_streams;
+        $_->write_packet($pkt, $input_stream) foreach @$output_streams;
     }
 
     return 1;

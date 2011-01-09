@@ -63,6 +63,34 @@ has 'codec_open' => (
     default => 0,
 );
 
+# buffer to use for storing decoded audio/video frames
+has 'output_buffer_size' => (
+    is => 'rw',
+    isa => 'Int',
+    default => 1024*256,  # this is what ffmpeg uses
+);
+has '_output_buffer' => (
+    is => 'rw',
+    lazy => 1,
+    predicate => 'has_output_buffer',
+    builder => 'build_output_buffer',
+);
+
+# keep an avpacket around to speed up writing decoded frames
+has '_output_avpacket' => (
+    is => 'rw',
+    lazy => 1,
+    predicate => 'has_output_avpacket',
+    builder => 'build_output_avpacket',
+);
+
+has '_output_avframe' => (
+    is => 'rw',
+    lazy => 1,
+    predicate => 'has_output_avframe',
+    builder => 'build_output_avframe',
+);
+
 # are we holding a reference to an existing stream or did we allocate
 # memory for a new stream (and need to free it later)
 has 'avstream_allocated' => (
@@ -70,6 +98,24 @@ has 'avstream_allocated' => (
     isa => 'Bool',
     default => 0,
 );
+
+sub build_output_buffer {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_alloc_output_buffer($self->output_buffer_size);
+}
+
+sub build_output_avpacket {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+}
+
+sub build_output_avframe {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_alloc_avframe();
+}
 
 sub create_avstream {
     my ($self, $istream) = @_;
@@ -169,30 +215,51 @@ sub open_decoder {
     }
 }
 
-
 # write packet $ipkt, encoding video if necessary
-sub write_frame {
+sub write_packet {
     my ($self, $ipkt, $istream) = @_;
 
-    my $format_ctx = $self->format_ctx->avformat;
-
-    my $oavpkt = Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+    my $oavformat = $self->format_ctx->avformat;
+    my $oavpkt = $self->_output_avpacket;
+    my $oavframe = $self->_output_avframe;
     Video::FFmpeg::Streamer::ffs_init_avpacket($oavpkt);
 
+    my $ret;
+
     if ($self->needs_encoding) {
-        warn "need to transcode";
-        $self->encode_packet($ipkt);
+        # TRANSCODING: decode input packet into avframe structure,
+        # then encode avframe as output packet
+
+        # decode $ipkt into $oavframe
+        my $status = $self->decode_packet($istream, $ipkt->avpacket, $oavframe);
+
+        if ($status > 0 && $oavframe) {
+            # encode $oavframe into $oavpkt
+            $ret = $self->encode_frame($oavframe, $oavpkt);
+
+            if ($ret > 0) {
+                # write packet to output
+                $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
+            }
+        }
     } else {
+        # copy input packet to output packet, updating pts/dts
         Video::FFmpeg::Streamer::ffs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
+
+        # write packet to output
+        $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
     }
     
-    # write packet to output
-    my $ret = Video::FFmpeg::Streamer::ffs_write_frame($format_ctx, $oavpkt);
-
     Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
-    Video::FFmpeg::Streamer::ffs_destroy_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
+    #Video::FFmpeg::Streamer::ffs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
     return $ret > -1;
+}
+
+sub decode_packet {
+    my ($self, $pkt) = @_;
+
+    
 }
 
 =head2 METHODS
@@ -225,7 +292,7 @@ sub destroy_stream {
         $self->codec_open(0);
     }
 
-    Video::FFmpeg::Streamer::ffs_destroy_stream($self->avstream)
+    Video::FFmpeg::Streamer::ffs_dealloc_stream($self->avstream)
         if $self->avstream_exists && $self->avstream_allocated;
 
     $self->clear_avstream;
@@ -234,6 +301,15 @@ sub destroy_stream {
 
 sub DEMOLISH {
     my ($self) = @_;
+
+    Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->_output_avpacket)
+        if $self->has_output_avpacket;
+
+    Video::FFmpeg::Streamer::ffs_dealloc_avframe($self->_output_avframe)
+        if $self->has_output_avframe;
+
+    Video::FFmpeg::Streamer::ffs_dealloc_output_buffer($self->_output_buffer)
+        if $self->has_output_buffer;
 
     $self->destroy_stream;
 }

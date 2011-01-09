@@ -40,13 +40,37 @@ has 'pixel_format' => (
 #    default => 'PIX_FMT_YUV420P',
 );
 
-has 'buffer_size' => (
-    is => 'rw',
-    isa => 'Int',
-    default => 200_000,
-    lazy => 1,
-);
+# decode $iavpkt into $oavframe
+sub decode_packet {
+    my ($self, $istream, $iavpkt, $oavframe) = @_;
 
+    my $fmt = $self->format_ctx->avformat;
+
+    # read $iavpkt, if able to decode then it is stored in $oavframe
+    my $res = Video::FFmpeg::Streamer::ffs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $oavframe);
+
+    if ($res < 0) {
+        # failure... what to do?
+        warn "failed to decode frame";
+    }
+
+    return $res;
+}
+
+# encode $iavframe into $oavpkt
+sub encode_frame {
+    my ($self, $iavframe, $oavpkt) = @_;
+
+    my $res = Video::FFmpeg::Streamer::ffs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size);
+
+    if ($res < 0) {
+        warn "failed to encode frame";
+    }
+
+    return $res;
+}
+
+# set stream video params after creation
 after 'create_avstream' => sub {
     my ($self, $istream) = @_;
 
