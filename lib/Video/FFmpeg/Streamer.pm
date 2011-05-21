@@ -26,7 +26,7 @@ broadcasting AV streams simple.
 
   # attempt to access a media stream or file path
   $streamer->open_uri('rtsp://10.0.1.2/mpeg4/media.amp')
-      or die "Failed to open video stream";
+      or die "Failed to open stream";
   
   # dump some information about the stream to the console
   $streamer->dump_format;
@@ -68,7 +68,7 @@ This module is based heavily on code from Max Vohra's Video::FFmpeg
 and Martin Boehm's avcodec sample application. It is not an attempt to
 create anything new or special, but rather to make a simple, moosified
 structure to make manipulating streams easy for people unfamiliar with
-FFmpeg or XS.
+libav or XS.
 
 =head2 OPTIONS
 

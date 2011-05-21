@@ -1,13 +1,16 @@
 use 5.010000;
 
+use strict;
+use warnings;
+
 use lib 'inc';
 use ExtUtils::MakeMaker;
 use ExtUtils::PkgConfig;
 
 my $lavf_lib = ExtUtils::PkgConfig->libs("libavformat");
 my $lavf_inc = ExtUtils::PkgConfig->cflags("libavformat");
-die("Installed libavformat version is too low. I require 52.16 or greater") unless (
-    ExtUtils::PkgConfig->atleast_version("libavformat", "52.16.0"));
+die("Installed libavformat version is too low. I require 52.16 or greater")
+    unless ExtUtils::PkgConfig->atleast_version("libavformat", "52.16.0");
 
 WriteMakefile(
     NAME           => 'Video::FFmpeg::Streamer',

@@ -42,7 +42,7 @@ Can be file name, "-" for STDOUT or a stream URI.
 =cut
 has 'format' => (
     is => 'rw',
-    isa => 'Str',
+    isa => 'Maybe[Str]',
 );
 
 # have we managed to open the output file yet?
@@ -307,6 +307,24 @@ sub get_first_video_stream_index {
         return $i;
     }
     return undef;
+}
+
+sub get_first_audio_stream {
+    my $self = shift;
+
+    my $idx = $self->get_first_audio_stream_index;
+    return unless defined $idx;
+
+    return $self->get_stream($idx);
+}
+
+sub get_first_video_stream {
+    my $self = shift;
+
+    my $idx = $self->get_first_video_stream_index;
+    return unless defined $idx;
+
+    return $self->get_stream($idx);
 }
 
 sub get_stream {

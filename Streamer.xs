@@ -127,7 +127,7 @@ ffs_is_video_stream_index(fmt, index)
 AVFormatContext* fmt;
 unsigned int index;
     CODE:
-        RETVAL = fmt->streams[index]->codec->codec_type == CODEC_TYPE_VIDEO;
+        RETVAL = fmt->streams[index]->codec->codec_type == AVMEDIA_TYPE_VIDEO;
     OUTPUT: RETVAL
 
 unsigned short
@@ -135,21 +135,21 @@ ffs_is_audio_stream_index(fmt, index)
 AVFormatContext* fmt;
 unsigned int index;
     CODE:
-        RETVAL = fmt->streams[index]->codec->codec_type == CODEC_TYPE_AUDIO;
+        RETVAL = fmt->streams[index]->codec->codec_type == AVMEDIA_TYPE_AUDIO;
     OUTPUT: RETVAL
 
 unsigned short
 ffs_is_video_stream(stream)
 AVStream* stream;
     CODE:
-        RETVAL = stream->codec->codec_type == CODEC_TYPE_VIDEO;
+        RETVAL = stream->codec->codec_type == AVMEDIA_TYPE_VIDEO;
     OUTPUT: RETVAL
 
 unsigned short
 ffs_is_audio_stream(stream)
 AVStream* stream;
     CODE:
-        RETVAL = stream->codec->codec_type == CODEC_TYPE_AUDIO;
+        RETVAL = stream->codec->codec_type == AVMEDIA_TYPE_AUDIO;
     OUTPUT: RETVAL
 
 
