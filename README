@@ -3,7 +3,8 @@ Video-FFmpeg-Streamer
 
 Module to make transcoding, saving and broadcasting AV streams simple.
 
-This module requires FFmpeg development libraries, preferably >= 0.6
+This module requires libav development libraries, preferably >= 0.6
+(available from http://libav.org/download.html)
 
 
 INSTALLATION
@@ -19,11 +20,12 @@ To install this module type the following:
 DESCRIPTION
 
 This module is an attempt to encapsulate high-level media streaming
-operations in a perl module. It does this by wrapping libav* in an XS
-interface which is utilized by various sub-modules.
+operations in a perl module. It does this by wrapping libav in an XS
+interface which is utilized by various sub-modules. (libav was
+formally the FFmpeg project, but forked off due to developer drama).
 
 To understand how this module is put together, you must be familiar
-with how media files are structured and how libav* reflects this.
+with how media files are structured and how libav reflects this.
 
 A media file or media stream is generally encapsulated in a transport
 format which can contain any number of video, audio or subtitle
@@ -78,7 +80,8 @@ would locate the appropriate AVCodecs for decoding the stream data and
 get AVCodecContexts for each stream.
 
 This module attempts to simplify this process. See
-Video::FFmpeg::Streamer docs for details on usage.
+Video::FFmpeg::Streamer POD docs for details on usage.
+
 
 ACKNOWLEDGEMENTS
 
