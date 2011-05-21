@@ -116,12 +116,22 @@ has 'debug' => (
     writer => 'set_debugging_enabled',
 );
 
+has 'finished_streaming' => (
+    is => 'rw',
+    isa => 'Bool',
+);
+
 sub debug {
     my ($self, $msg) = @_;
 
     return unless $self->debugging_enabled;
     print "FFmpeg::Video::Streamer: $msg\n";
     return undef;
+}
+
+sub finish_streaming {
+    my ($self) = @_;
+    $self->finished_streaming(1);
 }
 
 =back
@@ -178,8 +188,9 @@ sub stream {
 
     $_->write_header for @{ $self->output_format_contexts };
 
-    while ($self->stream_frame) {
-
+    $self->finished_streaming(0);
+    while ($self->stream_frame && ! $self->finished_streaming) {
+        # loop until finished
     }
 
     $_->write_trailer for @{ $self->output_format_contexts };
@@ -195,7 +206,6 @@ sub stream_frame {
 
     my $pkt = $self->input_format_context->read_packet;
     if (! $pkt->success) {
-        warn "reached end of input";
         return;
     }
 

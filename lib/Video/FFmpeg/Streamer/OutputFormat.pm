@@ -31,7 +31,6 @@ sub find_output_format {
 sub DEMOLISH {
     my ($self) = @_;
 
-    warn "demolishing OutputFormat";
 }
 
 __PACKAGE__->meta->make_immutable;

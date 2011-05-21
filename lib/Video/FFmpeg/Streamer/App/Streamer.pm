@@ -124,7 +124,11 @@ sub stream {
     # input and output ready to stream
     print "Beginning streaming to " . $self->output_uri . "...\n" if $self->debug;
 
+    $SIG{INT} = sub { $streamer->finish_streaming };
+
     $streamer->stream;
+
+    print "Streaming finished\n" if $self->debug;
 }
 
 __PACKAGE__->meta->make_immutable;

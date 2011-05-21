@@ -275,7 +275,7 @@ void
 ffs_free_avpacket_data(pkt)
 AVPacket* pkt;
     CODE:
-        av_free_packet(pkt);
+       av_destruct_packet(pkt);
 
 int
 ffs_read_packet(ctx, pkt)

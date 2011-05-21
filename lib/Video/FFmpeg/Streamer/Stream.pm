@@ -44,6 +44,7 @@ has 'avcodec_ctx' => (
     isa => 'AVCodecContext',
     builder => 'build_codec_ctx',
     lazy => 1,
+    predicate => 'has_avcodec_ctx',
 );
 
 has 'bit_rate' => (
@@ -79,6 +80,7 @@ has '_output_buffer' => (
 # keep an avpacket around to speed up writing decoded frames
 has '_output_avpacket' => (
     is => 'rw',
+    isa => 'AVPacket',
     lazy => 1,
     predicate => 'has_output_avpacket',
     builder => 'build_output_avpacket',
@@ -87,6 +89,7 @@ has '_output_avpacket' => (
 has '_output_avframe' => (
     is => 'rw',
     lazy => 1,
+    isa => 'AVFrame',
     predicate => 'has_output_avframe',
     builder => 'build_output_avframe',
 );
@@ -250,7 +253,7 @@ sub write_packet {
         $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
     }
     
-    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
+#    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
     #Video::FFmpeg::Streamer::ffs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
     return $ret > -1;
@@ -288,12 +291,14 @@ sub destroy_stream {
     my ($self) = @_;
 
     if ($self->codec_open) {
-        Video::FFmpeg::Streamer::ffs_close_codec($self->avcodec_ctx);
+        Video::FFmpeg::Streamer::ffs_close_codec($self->avcodec_ctx)
+            if $self->has_avcodec_ctx && $self->avcodec_ctx;
+
         $self->codec_open(0);
     }
 
     Video::FFmpeg::Streamer::ffs_dealloc_stream($self->avstream)
-        if $self->avstream_exists && $self->avstream_allocated;
+        if $self->avstream_exists && $self->avstream_allocated && $self->avstream;
 
     $self->clear_avstream;
     $self->avstream_allocated(0);
@@ -303,10 +308,10 @@ sub DEMOLISH {
     my ($self) = @_;
 
     Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->_output_avpacket)
-        if $self->has_output_avpacket;
+        if $self->has_output_avpacket && $self->_output_avpacket;
 
     Video::FFmpeg::Streamer::ffs_dealloc_avframe($self->_output_avframe)
-        if $self->has_output_avframe;
+        if $self->has_output_avframe && $self->_output_avframe;
 
     Video::FFmpeg::Streamer::ffs_dealloc_output_buffer($self->_output_buffer)
         if $self->has_output_buffer;

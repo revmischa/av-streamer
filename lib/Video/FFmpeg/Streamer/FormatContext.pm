@@ -384,7 +384,6 @@ sub stream_count {
 sub write_header {
     my ($self) = @_;
 
-    warn "writing header for format " . $self->avformat;
     return Video::FFmpeg::Streamer::ffs_write_header($self->avformat);
 }
 
@@ -397,14 +396,14 @@ sub write_trailer {
 sub DEMOLISH {
     my ($self) = @_;
 
-    Video::FFmpeg::Streamer::ffs_destroy_avpacket($self->avpacket)
-        if $self->avpacket_exists;
+    Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->avpacket)
+        if $self->avpacket_exists && $self->avpacket;
 
     Video::FFmpeg::Streamer::ffs_close_input_file($self->avformat)
-        if $self->input_opened;
+        if $self->input_opened && $self->avformat;
 
-#    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
-#        if $self->avformat_exists;
+    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
+        if $self->avformat_exists && $self->avformat;
 }
 
 =back
