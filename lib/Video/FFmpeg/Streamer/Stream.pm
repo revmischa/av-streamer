@@ -308,10 +308,10 @@ sub DEMOLISH {
     my ($self) = @_;
 
     Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->_output_avpacket)
-        if $self->has_output_avpacket && $self->_output_avpacket;
+        if $self->has_output_avpacket;
 
     Video::FFmpeg::Streamer::ffs_dealloc_avframe($self->_output_avframe)
-        if $self->has_output_avframe && $self->_output_avframe;
+        if $self->has_output_avframe;
 
     Video::FFmpeg::Streamer::ffs_dealloc_output_buffer($self->_output_buffer)
         if $self->has_output_buffer;

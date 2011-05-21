@@ -397,13 +397,15 @@ sub DEMOLISH {
     my ($self) = @_;
 
     Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->avpacket)
-        if $self->avpacket_exists && $self->avpacket;
+        if $self->avpacket_exists;
 
-    Video::FFmpeg::Streamer::ffs_close_input_file($self->avformat)
-        if $self->input_opened && $self->avformat;
-
-    Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
-        if $self->avformat_exists && $self->avformat;
+    if ($self->input_opened) {
+        # this destroys the avformat context
+        Video::FFmpeg::Streamer::ffs_close_input_file($self->avformat);
+    } else {
+        Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
+            if $self->avformat_exists;
+    }
 }
 
 =back
