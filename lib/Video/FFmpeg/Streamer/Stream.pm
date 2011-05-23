@@ -24,6 +24,7 @@ has 'format_ctx' => (
     isa => 'Video::FFmpeg::Streamer::FormatContext',
     required => 1,
     weak_ref => 1,
+    handles => [qw/ global_pts /],
 );
 
 has 'index' => (
@@ -219,12 +220,16 @@ sub open_decoder {
 }
 
 # write packet $ipkt, encoding video if necessary
+# TODO: move decoding into a separate function, so we only
+# need to decode once if we have multiple outputs
 sub write_packet {
     my ($self, $ipkt, $istream) = @_;
 
     my $oavformat = $self->format_ctx->avformat;
     my $oavpkt = $self->_output_avpacket;
     my $oavframe = $self->_output_avframe;
+
+    # is this needed? does decode_packet do this for us?
     Video::FFmpeg::Streamer::ffs_init_avpacket($oavpkt);
 
     my $ret;
@@ -237,8 +242,11 @@ sub write_packet {
         my $status = $self->decode_packet($istream, $ipkt->avpacket, $oavframe);
 
         if ($status && $status > 0 && $oavframe) {
+            # figure out our current PTS
+            my $pts = $ipkt->scaled_pts($istream, $self->global_pts);
+
             # encode $oavframe into $oavpkt
-            $ret = $self->encode_frame($oavframe, $oavpkt);
+            $ret = $self->encode_frame($oavframe, $oavpkt, $pts);
 
             if ($ret > 0) {
                 # write packet to output

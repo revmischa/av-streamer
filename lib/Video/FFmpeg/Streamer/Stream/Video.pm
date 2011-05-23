@@ -67,9 +67,12 @@ sub decode_packet {
 
 # encode $iavframe into $oavpkt
 sub encode_frame {
-    my ($self, $iavframe, $oavpkt) = @_;
+    my ($self, $iavframe, $oavpkt, $pts) = @_;
 
-    my $res = Video::FFmpeg::Streamer::ffs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size);
+    croak "PTS value required in encode_frame"
+        unless defined $pts;
+
+    my $res = Video::FFmpeg::Streamer::ffs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 
     if ($res < 0) {
         warn "failed to encode frame";

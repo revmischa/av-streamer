@@ -99,6 +99,13 @@ has 'avpacket' => (
     predicate => 'avpacket_exists',
 );
 
+# used to keep track of global PTS value when decoding
+has 'global_pts' => (
+    is => 'rw',
+    isa => 'Int',
+    default => sub { Video::FFmpeg::Streamer::ffs_default_pts_value() },
+);
+
 =back
 
 =head2 METHODS

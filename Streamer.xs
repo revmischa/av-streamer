@@ -16,6 +16,7 @@
 #pragma mark types
 typedef enum CodecID    CodecID;
 typedef uint8_t         FFS_FrameBuffer;
+typedef uint64_t        FFS_PTS;
 typedef short bool_t;
 
 #define FFS_DEFAULT_PIXFMT PIX_FMT_YUV420P
@@ -263,6 +264,41 @@ AVPacket *pkt;
         RETVAL = pkt->stream_index;
     OUTPUT: RETVAL
 
+FFS_PTS
+ffs_default_pts_value()
+    CODE: { RETVAL = AV_NOPTS_VALUE; }
+    OUTPUT: RETVAL
+
+FFS_PTS
+ffs_get_avpacket_dts(pkt)
+AVPacket *pkt;
+    CODE:
+        RETVAL = pkt->dts;
+    OUTPUT: RETVAL
+
+FFS_PTS
+ffs_get_avpacket_scaled_pts(pkt, stream, global_pts)
+AVPacket *pkt;
+AVStream *stream;
+FFS_PTS global_pts;
+    CODE:
+    {
+        FFS_PTS pts;
+
+        /* if we got a DTS, use it. if not, use global PTS if exists, otherwise 0 */
+        if (pkt->dts == AV_NOPTS_VALUE && global_pts != AV_NOPTS_VALUE)
+            pts = global_pts;
+        else if (pkt->dts != AV_NOPTS_VALUE)
+            pts = pkt->dts;
+        else
+            pts = 0;
+
+        pts *= av_q2d(stream->time_base);
+
+        RETVAL = pts;
+    }
+    OUTPUT: RETVAL
+
 void
 ffs_dealloc_avpacket(pkt)
 AVPacket* pkt;
@@ -339,13 +375,14 @@ AVStream *ost;
     }
 
 int
-ffs_encode_video_frame(format_ctx, ostream, iframe, opkt, obuf, obuf_size)
+ffs_encode_video_frame(format_ctx, ostream, iframe, opkt, obuf, obuf_size, pts)
 AVFormatContext* format_ctx;
 AVStream* ostream;
 AVFrame* iframe;
 AVPacket* opkt;
 FFS_FrameBuffer* obuf;
 unsigned int obuf_size;
+FFS_PTS pts;
     CODE:
     {
         /* TODO: image resampling with sws_scale() */
@@ -362,8 +399,10 @@ unsigned int obuf_size;
             opkt->size = status;
             opkt->data = obuf;
             
-            if(enc->coded_frame->pts != AV_NOPTS_VALUE)
-                opkt->pts= av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);
+            if (enc->coded_frame->pts != AV_NOPTS_VALUE)
+                /*opkt->pts = av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);*/
+                opkt->pts = pts;
+
 
             if(enc->coded_frame->key_frame)
                 opkt->flags |= AV_PKT_FLAG_KEY;
@@ -389,6 +428,8 @@ AVFrame* oframe;
 
          status = avcodec_decode_video2(istream->codec,
              oframe, &frame_was_decoded, ipkt);
+
+         /* status = frame size if frame was decoded and no error */
          RETVAL = status;
 
          istream->quality = oframe->quality;
@@ -402,8 +443,6 @@ AVFrame* oframe;
              /* not enough data to decode a frame */
              XSRETURN_UNDEF;
          }
-
-         RETVAL = 1;
      }
      OUTPUT: RETVAL
 
