@@ -275,7 +275,7 @@ void
 ffs_free_avpacket_data(pkt)
 AVPacket* pkt;
     CODE:
-       av_destruct_packet(pkt);
+       av_free_packet(pkt);
 
 int
 ffs_read_packet(ctx, pkt)
@@ -355,7 +355,7 @@ unsigned int obuf_size;
         /* encode frame into opkt */
         opkt->stream_index = ostream->index;
         status = avcodec_encode_video(enc, obuf, obuf_size, iframe);
-        
+
         RETVAL = status;
 
         if (status > 0) {
@@ -400,7 +400,7 @@ AVFrame* oframe;
 
          if (! frame_was_decoded) {
              /* not enough data to decode a frame */
-             return;
+             XSRETURN_UNDEF;
          }
 
          RETVAL = 1;
@@ -831,7 +831,56 @@ int pixfmt;
         RETVAL = 1;
     }
     OUTPUT: RETVAL        
-    
+
+int
+ffs_set_audio_stream_params(ofmt, as, codec_name, stream_copy, channels, sample_rate, bit_rate)
+AVFormatContext* ofmt;
+AVStream *as;
+const char *codec_name;
+unsigned short stream_copy;
+unsigned int channels;
+unsigned int sample_rate;
+unsigned int bit_rate;
+    CODE:
+    {
+        if (! codec_name && ofmt->oformat->audio_codec == CODEC_ID_NONE) {
+            fprintf(stderr, "No encoder specified for ffs_set_audio_stream_params\n");
+            XSRETURN_UNDEF;
+        }
+
+        as->stream_copy = stream_copy;
+
+        AVCodecContext *c = as->codec;
+        AVCodec *codec = NULL;
+
+        if (codec_name) {
+            /* look up codec */
+            codec = avcodec_find_encoder_by_name(codec_name);
+            if (! codec) {
+                fprintf(stderr, "failed to find encoder for codec named '%s'\n", codec_name);
+                XSRETURN_UNDEF;
+            }
+        } else {
+            /* use default codec for output format */
+            codec = avcodec_find_encoder(ofmt->oformat->audio_codec);
+            if (! codec) {
+                fprintf(stderr, "failed to find default encoder for audio codec id %d\n", c->codec_id);
+                XSRETURN_UNDEF;
+            }
+            printf("using default codec\n");
+        }
+
+        c->codec_type = AVMEDIA_TYPE_AUDIO;
+
+        /* put sample parameters */
+        c->bit_rate = bit_rate;
+        c->sample_rate = sample_rate;
+        c->channels = channels;
+
+        RETVAL = 1;
+    }
+    OUTPUT: RETVAL
+
 AVStream*
 ffs_new_output_audio_stream(ctx, sample_rate, bit_rate)
 AVFormatContext* ctx;

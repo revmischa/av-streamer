@@ -47,9 +47,15 @@ sub decode_packet {
     my $fmt = $self->format_ctx->avformat;
 
     # read $iavpkt, if able to decode then it is stored in $oavframe
+    # will return < 0 on error, 0 if not enough data was passed to decode a frame
     my $res = Video::FFmpeg::Streamer::ffs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $oavframe);
 
-    if ($res < 0) {
+    if ($res && ref $res) {
+        # this shouldn't happen!
+        warn "got ref! $res";
+    }
+
+    if ($res && $res < 0) {
         # failure... what to do?
         warn "failed to decode frame";
     }

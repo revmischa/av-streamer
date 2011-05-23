@@ -97,28 +97,32 @@ sub stream {
 
     # create audio and video output streams
 
-    # make sure input video stream exists if an output vcodec was requested
-    my $vistream = $streamer->input_format_context->get_first_video_stream;
-    if ($vistream) {
-        # find first input video stream, add corresponding output stream
-        # all done automatically for us!
-        my $codec = $self->output_video_codec || 'copy';
-        my $vostream = $output->add_video_stream({
-            codec_name => $codec,
-        });
-    } elsif ($self->output_video_codec) {
-        die "Output video codec " . $self->output_video_codec . " requested, but input file has no video streams.\n";
+    unless ($self->output_video_codec && lc $self->output_video_codec eq 'none') {
+        # make sure input video stream exists if an output vcodec was requested
+        my $vistream = $streamer->input_format_context->get_first_video_stream;
+        if ($vistream) {
+            # find first input video stream, add corresponding output stream
+            # all done automatically for us!
+            my $codec = $self->output_video_codec;
+            my $vostream = $output->add_video_stream({
+                codec_name => $codec,
+            });
+        } elsif ($self->output_video_codec) {
+            die "Output video codec " . $self->output_video_codec . " requested, but input file has no video streams.\n";
+        }
     }
 
-    my $aistream = $streamer->input_format_context->get_first_audio_stream;
-    if ($aistream) {
-        # find first input audio stream, add corresponding output stream
-        my $codec = $self->output_audio_codec || 'copy';
-        my $aostream = $output->add_audio_stream({
-            codec_name => $codec,
-        });
-    } elsif ($self->output_audio_codec) {
-        die "Output audio codec " . $self->output_audio_codec . " requested, but input file has no audio streams.\n";
+    unless ($self->output_audio_codec && lc $self->output_audio_codec eq 'none') {
+        my $aistream = $streamer->input_format_context->get_first_audio_stream;
+        if ($aistream) {
+            # find first input audio stream, add corresponding output stream
+            my $codec = $self->output_audio_codec;
+            my $aostream = $output->add_audio_stream({
+                codec_name => $codec,
+            });
+        } elsif ($self->output_audio_codec) {
+            die "Output audio codec " . $self->output_audio_codec . " requested, but input file has no audio streams.\n";
+        }
     }
 
     # input and output ready to stream
