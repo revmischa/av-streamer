@@ -41,6 +41,8 @@ has 'pixel_format' => (
 );
 
 # decode $iavpkt into $oavframe
+# returns < 0 on error
+# returns undef if no error but frame not decoded (not enough data read to decode a frame yet)
 sub decode_packet {
     my ($self, $istream, $iavpkt, $oavframe) = @_;
 

@@ -195,7 +195,7 @@ AVFrame* frame;
     }
     
 void
-ffs_dealloc_frame_buffer(buf)
+ffs_dealloc_output_buffer(buf)
 FFS_FrameBuffer* buf;
     CODE:
     {

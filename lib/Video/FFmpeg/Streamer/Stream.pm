@@ -236,11 +236,11 @@ sub write_packet {
         # decode $ipkt into $oavframe
         my $status = $self->decode_packet($istream, $ipkt->avpacket, $oavframe);
 
-        if ($status > 0 && $oavframe) {
+        if ($status && $status > 0 && $oavframe) {
             # encode $oavframe into $oavpkt
             $ret = $self->encode_frame($oavframe, $oavpkt);
 
-            if ($ret && $ret > 0) {
+            if ($ret > 0) {
                 # write packet to output
                 $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
             }
@@ -256,7 +256,7 @@ sub write_packet {
     Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
     #Video::FFmpeg::Streamer::ffs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
-    return $ret > -1;
+    return $ret && $ret > -1;
 }
 
 sub decode_packet {
