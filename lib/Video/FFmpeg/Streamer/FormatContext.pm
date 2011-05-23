@@ -102,7 +102,7 @@ has 'avpacket' => (
 # used to keep track of global PTS value when decoding
 has 'global_pts' => (
     is => 'rw',
-    isa => 'Int',
+    isa => 'Num',
     default => sub { Video::FFmpeg::Streamer::ffs_no_pts_value() },
 );
 

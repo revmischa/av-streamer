@@ -16,7 +16,7 @@
 #pragma mark types
 typedef enum CodecID    CodecID;
 typedef uint8_t         FFS_FrameBuffer;
-typedef uint64_t        FFS_PTS;
+typedef double          FFS_PTS;
 typedef short bool_t;
 
 #define FFS_DEFAULT_PIXFMT PIX_FMT_YUV420P
@@ -283,7 +283,7 @@ AVStream *stream;
 FFS_PTS global_pts;
     CODE:
     {
-        FFS_PTS pts;
+        double pts;
 
         /* if we got a DTS, use it. if not, use global PTS if exists, otherwise 0 */
         if (pkt->dts == AV_NOPTS_VALUE && global_pts != AV_NOPTS_VALUE)
@@ -294,6 +294,7 @@ FFS_PTS global_pts;
             pts = 0;
 
         pts *= av_q2d(stream->time_base);
+        printf("scaled pts: %f\n", pts);
 
         RETVAL = pts;
     }

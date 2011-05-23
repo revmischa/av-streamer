@@ -9,7 +9,7 @@ AVPacket        *                 T_PTROBJ_SPECIAL
 FFS_FrameBuffer *                 T_PTROBJ_SPECIAL
 PixelFormat                       T_IV
 CodecID                           T_IV
-FFS_PTS                           T_IV
+FFS_PTS                           T_NV
 
 INPUT
 T_PTROBJ_SPECIAL

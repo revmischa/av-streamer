@@ -43,7 +43,7 @@ has 'pixel_format' => (
 # current PTS for syncronization
 has 'clock' => (
     is => 'rw',
-    isa => 'Int',
+    isa => 'Num',
     default => sub { Video::FFmpeg::Streamer::ffs_no_pts_value() },
 );
 
