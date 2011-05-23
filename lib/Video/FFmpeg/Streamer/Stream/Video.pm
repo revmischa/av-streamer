@@ -40,6 +40,13 @@ has 'pixel_format' => (
 #    default => 'PIX_FMT_YUV420P',
 );
 
+# current PTS for syncronization
+has 'clock' => (
+    is => 'rw',
+    isa => 'Int',
+    default => sub { Video::FFmpeg::Streamer::ffs_no_pts_value() },
+);
+
 # decode $iavpkt into $oavframe
 # returns < 0 on error
 # returns undef if no error but frame not decoded (not enough data read to decode a frame yet)
@@ -69,8 +76,23 @@ sub decode_packet {
 sub encode_frame {
     my ($self, $iavframe, $oavpkt, $pts) = @_;
 
-    croak "PTS value required in encode_frame"
-        unless defined $pts;
+    #croak "PTS value required in encode_frame"
+    #    unless defined $pts;
+
+    if ($pts) {
+        # if we know our pts, set clock to it
+        $self->clock($pts);
+    } else {
+        $pts = $self->clock;
+    }
+
+    # update the video clock
+    my $frame_delay = $self->frame_delay;
+    my $repeat_pict = Video::FFmpeg::Streamer::ffs_get_frame_repeat_pict($iavframe);
+    # if we are repeating a frame, adjust clock accordingly
+    $frame_delay += $repeat_pict * ($frame_delay * 0.5);
+    $pts = $self->clock + $frame_delay;
+    $self->clock($pts);
 
     my $res = Video::FFmpeg::Streamer::ffs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 

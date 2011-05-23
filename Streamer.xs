@@ -265,7 +265,7 @@ AVPacket *pkt;
     OUTPUT: RETVAL
 
 FFS_PTS
-ffs_default_pts_value()
+ffs_no_pts_value()
     CODE: { RETVAL = AV_NOPTS_VALUE; }
     OUTPUT: RETVAL
 
@@ -521,6 +521,20 @@ ffs_get_codec_ctx_sample_rate(c)
 AVCodecContext* c;
     CODE:
         RETVAL = c->sample_rate;
+    OUTPUT: RETVAL
+
+unsigned int
+ffs_get_codec_ctx_frame_delay(c)
+AVCodecContext* c;
+    CODE:
+        RETVAL = av_q2d(c->time_base);
+    OUTPUT: RETVAL
+
+int
+ffs_get_frame_repeat_pict(f)
+AVFrame* f;
+    CODE:
+        RETVAL = f->repeat_pict;
     OUTPUT: RETVAL
 
 char*

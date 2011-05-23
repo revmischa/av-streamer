@@ -103,7 +103,7 @@ has 'avpacket' => (
 has 'global_pts' => (
     is => 'rw',
     isa => 'Int',
-    default => sub { Video::FFmpeg::Streamer::ffs_default_pts_value() },
+    default => sub { Video::FFmpeg::Streamer::ffs_no_pts_value() },
 );
 
 =back

@@ -219,6 +219,12 @@ sub open_decoder {
     }
 }
 
+sub frame_delay {
+    my ($self) = @_;
+
+    return Video::FFmpeg::Streamer::ffs_get_codec_ctx_frame_delay($self->avcodec_ctx);
+}
+
 # write packet $ipkt, encoding video if necessary
 # TODO: move decoding into a separate function, so we only
 # need to decode once if we have multiple outputs
