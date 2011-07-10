@@ -1,0 +1,2 @@
+cd ..
+gdb --args perl -Iblib/arch/auto/AV/Streamer ./ffstream.pl -i dev/sample_mpeg4.mp4 -o dev/out.mkv --vcodec libvpx --acodec none

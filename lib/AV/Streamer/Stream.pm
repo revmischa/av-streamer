@@ -223,8 +223,8 @@ sub open_decoder {
     if ($self->is_video_stream) {
         $self->width(AV::Streamer::avs_get_codec_ctx_width($avcodec_ctx));
         $self->height(AV::Streamer::avs_get_codec_ctx_height($avcodec_ctx));
-        $self->base_den(AV::Streamer::avs_get_codec_ctx_base_den($avcodec_ctx));
-        $self->base_num(AV::Streamer::avs_get_codec_ctx_base_num($avcodec_ctx));
+        $self->base_den(AV::Streamer::avs_get_stream_base_den($self->avstream));
+        $self->base_num(AV::Streamer::avs_get_stream_base_num($self->avstream));
         $self->pixel_format(AV::Streamer::avs_get_codec_ctx_pixfmt($avcodec_ctx));
         $self->gop_size(AV::Streamer::avs_get_codec_ctx_gopsize($avcodec_ctx));
     } else {

@@ -78,9 +78,21 @@ CodecID
 avs_get_stream_codec_id(stream)
 AVStream *stream;
     CODE:
-    {
         RETVAL = stream->codec->codec_id;
-    }
+    OUTPUT: RETVAL
+
+int
+avs_get_stream_base_den(s)
+AVStream *s;
+    CODE:
+        RETVAL = s->time_base.den;
+    OUTPUT: RETVAL
+
+int
+avs_get_stream_base_num(s)
+AVStream *s;
+    CODE:
+        RETVAL = s->time_base.num;
     OUTPUT: RETVAL
 
 int
