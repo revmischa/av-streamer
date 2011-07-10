@@ -85,9 +85,6 @@ sub stream {
     $streamer->open_uri($self->input_uri)
         or croak "Failed to open " . $self->input_uri;
 
-    # input debugging info
-    $streamer->dump_format if $self->debug;
-
     # create output format context
     my $output = $streamer->add_output(
         'uri' => $self->output_uri,
@@ -124,6 +121,9 @@ sub stream {
             die "Output audio codec " . $self->output_audio_codec . " requested, but input file has no audio streams.\n";
         }
     }
+
+    # input debugging info
+    $streamer->dump_format if $self->debug;
 
     # input and output ready to stream
     print "Beginning streaming to " . $self->output_uri . "...\n" if $self->debug;
