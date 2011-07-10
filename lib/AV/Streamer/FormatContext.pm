@@ -99,14 +99,6 @@ has 'avpacket' => (
     predicate => 'avpacket_exists',
 );
 
-has 'pts_correction_ctx' => (
-    is => 'rw',
-    isa => 'PtsCorrectionCtx',
-    lazy => 1,
-    builder => 'build_pts_correction_ctx',
-    predicate => 'pts_correction_ctx_exists',
-);
-
 # used to keep track of global PTS value when decoding
 has 'global_pts' => (
     is => 'rw',
@@ -129,12 +121,6 @@ sub build_avpacket {
     my ($self) = @_;
 
     return AV::Streamer::avs_alloc_avpacket();
-}
-
-sub build_pts_correction_ctx {
-    my ($self) = @_;
-
-    return AV::Streamer::avs_alloc_and_init_pts_correction_context();
 }
 
 # create avformatctx, open output file
@@ -386,6 +372,7 @@ sub read_packet {
 
     my $format_ctx = $self->avformat;
     my $pkt = $self->avpacket;
+    AV::Streamer::avs_init_avpacket($pkt);
     my $ret = AV::Streamer::avs_read_packet($format_ctx, $pkt);
 
     my $retpkt = AV::Streamer::Packet->new(
@@ -419,9 +406,6 @@ sub DEMOLISH {
 
     AV::Streamer::avs_dealloc_avpacket($self->avpacket)
         if $self->avpacket_exists;
-
-    AV::Streamer::avs_destroy_pts_correction_context($self->pts_correction_ctx)
-        if $self->pts_correction_ctx_exists;
 
     if ($self->input_opened) {
         # this destroys the avformat context

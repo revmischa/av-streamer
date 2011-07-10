@@ -41,10 +41,9 @@ has 'pixel_format' => (
 );
 
 # current PTS for syncronization
-has 'clock' => (
+has 'next_pts' => (
     is => 'rw',
     isa => 'Num',
-    default => sub { AV::Streamer::avs_no_pts_value() },
 );
 
 # decode $iavpkt into $oavframe
@@ -55,9 +54,12 @@ sub decode_packet {
 
     my $fmt = $self->format_ctx->avformat;
 
+    my $opts;
+    
     # read $iavpkt, if able to decode then it is stored in $oavframe
     # will return < 0 on error, 0 if not enough data was passed to decode a frame
-    my $res = AV::Streamer::avs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $oavframe);
+    # decoded PTS will be in $opts
+    my $res = AV::Streamer::avs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $self->pts_correction_ctx, $opts, $oavframe);
 
     if ($res && ref $res) {
         # this shouldn't happen!
@@ -67,6 +69,14 @@ sub decode_packet {
     if ($res && $res < 0) {
         # failure... what to do?
         warn "failed to decode frame";
+        return 
+    }
+
+    if ($res) {
+        # frame was decoded
+        # should have a legit PTS
+        $self->next_pts($opts);
+        warn "legit PTS: $opts";
     }
 
     return $res;
@@ -77,25 +87,20 @@ sub encode_frame {
     my ($self, $istream, $ipkt, $iavframe, $oavpkt) = @_;
 
     # figure out our current PTS
-    my $pts = $ipkt->scaled_pts($istream, $self->global_pts);
-    $pts = AV::Streamer::avs_guess_correct_pts($self->pts_correction_ctx, $pts, $iavframe);
+    #my $pts = $ipkt->scaled_pts($istream, $self->global_pts);
+    my $dts = AV::Streamer::avs_get_avframe_dts($iavframe);
+    my $pts = $self->next_pts; #AV::Streamer::avs_get_avframe_pts($iavframe);
+#    warn "dts: $dts scaled pts: $pts";
+    $pts = AV::Streamer::avs_guess_correct_pts($self->pts_correction_ctx, $pts, $dts);
 
-    warn "got pts: $pts";
-
-    if ($pts) {
-        # if we know our pts, set clock to it
-        $self->clock($pts);
-    } else {
-        $pts = $self->clock;
-    }
+    warn "dts: $dts guessed pts: $pts";
 
     # update the video clock
     my $frame_delay = $self->frame_delay;
     my $repeat_pict = AV::Streamer::avs_get_frame_repeat_pict($iavframe);
     # if we are repeating a frame, adjust clock accordingly
     $frame_delay += $repeat_pict * ($frame_delay * 0.5);
-    $pts = $self->clock + $frame_delay;
-    $self->clock($pts);
+    $pts = $self->next_pts + $frame_delay;
 
     my $res = AV::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 

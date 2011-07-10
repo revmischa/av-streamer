@@ -24,7 +24,7 @@ has 'format_ctx' => (
     isa => 'AV::Streamer::FormatContext',
     required => 1,
     weak_ref => 1,
-    handles => [qw/ global_pts pts_correction_ctx /],
+    handles => [qw/ global_pts /],
 );
 
 has 'index' => (
@@ -95,6 +95,14 @@ has '_output_avframe' => (
     builder => 'build_output_avframe',
 );
 
+has 'pts_correction_ctx' => (
+    is => 'rw',
+    isa => 'PtsCorrectionContext',
+    lazy => 1,
+    builder => 'build_pts_correction_ctx',
+    predicate => 'pts_correction_ctx_exists',
+);
+
 # are we holding a reference to an existing stream or did we allocate
 # memory for a new stream (and need to free it later)
 has 'avstream_allocated' => (
@@ -102,6 +110,12 @@ has 'avstream_allocated' => (
     isa => 'Bool',
     default => 0,
 );
+
+sub build_pts_correction_ctx {
+    my ($self) = @_;
+
+    return AV::Streamer::avs_alloc_and_init_pts_correction_context();
+}
 
 sub build_output_buffer {
     my ($self) = @_;
@@ -265,7 +279,6 @@ sub write_packet {
     }
     
     AV::Streamer::avs_free_avpacket_data($oavpkt); # right??
-    #AV::Streamer::avs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
     return $ret && $ret > -1;
 }
@@ -326,6 +339,9 @@ sub DEMOLISH {
 
     AV::Streamer::avs_dealloc_output_buffer($self->_output_buffer)
         if $self->has_output_buffer;
+
+    AV::Streamer::avs_destroy_pts_correction_context($self->pts_correction_ctx)
+        if $self->pts_correction_ctx_exists;
 
     $self->destroy_stream;
 }

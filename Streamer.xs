@@ -53,7 +53,7 @@ char* uri;
 
         AVFormatContext *formatCtx;
 
-        if ( av_open_input_file(&formatCtx, uri, NULL, 0, NULL) != 0 )
+        if ( avformat_open_input(&formatCtx, uri, NULL, NULL) != 0 )
             XSRETURN_UNDEF;
 
         /* make sure we can read the stream */
@@ -280,6 +280,13 @@ AVFrame *frame;
     OUTPUT: RETVAL
 
 AVS_PTS
+avs_get_avframe_pts(frame)
+AVFrame *frame;
+    CODE:
+        RETVAL = frame->pkt_pts;
+    OUTPUT: RETVAL
+
+AVS_PTS
 avs_guess_correct_pts(ctx, in_pts, dts)
 PtsCorrectionContext *ctx;
 AVS_PTS in_pts;
@@ -305,7 +312,6 @@ AVS_PTS global_pts;
             pts = 0;
 
         pts *= av_q2d(stream->time_base);
-        printf("scaled pts: %f\n", pts);
 
         RETVAL = pts;
     }
@@ -411,40 +417,34 @@ AVS_PTS pts;
             opkt->size = status;
             opkt->data = obuf;
             
-            if (enc->coded_frame->pts != AV_NOPTS_VALUE)
-                /*opkt->pts = av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);*/
-                opkt->pts = pts;
+            if (enc->coded_frame && enc->coded_frame->pts != AV_NOPTS_VALUE)
+                opkt->pts = av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);
 
-
-            if(enc->coded_frame->key_frame)
+            if (enc->coded_frame && enc->coded_frame->key_frame)
                 opkt->flags |= AV_PKT_FLAG_KEY;
        }
     }
     OUTPUT: RETVAL
 
 int
-avs_decode_video_frame(format_ctx, istream, ipkt, oframe)
+avs_decode_video_frame(format_ctx, istream, ipkt, pts_ctx, OUT AVS_PTS pts, oframe)
 AVFormatContext* format_ctx;
 AVStream* istream;
 AVPacket* ipkt;
+PtsCorrectionContext *pts_ctx;
 AVFrame* oframe;
      CODE:
      {
          int status, frame_was_decoded;
-
+         
          /* reset frame to default values */
          avcodec_get_frame_defaults(oframe);
-
-         /* ??? istream->codec->reordered_opaque = pkt_pts;
-         pkt_pts = AV_NOPTS_VALUE; */
 
          status = avcodec_decode_video2(istream->codec,
              oframe, &frame_was_decoded, ipkt);
 
          /* status = frame size if frame was decoded and no error */
          RETVAL = status;
-
-         istream->quality = oframe->quality;
 
          if (status < 0) {
              /* error */
@@ -455,6 +455,14 @@ AVFrame* oframe;
              /* not enough data to decode a frame */
              XSRETURN_UNDEF;
          }
+
+         /* figure out decoded frame PTS */
+         if (ipkt->pts == AV_NOPTS_VALUE)
+             pts = 0;
+         else
+             pts = guess_correct_pts(pts_ctx, oframe->pkt_pts, oframe->pkt_dts);
+
+             
      }
      OUTPUT: RETVAL
 
@@ -662,9 +670,6 @@ char* uri;
         ctx->preload   = (int)(mux_preload*AV_TIME_BASE);
         ctx->max_delay = (int)(mux_max_delay*AV_TIME_BASE);
 
-        /* TODO: allow encoding params to be specified */
-        av_set_parameters(ctx, NULL);
-        
         RETVAL = ctx;
      }
      OUTPUT: RETVAL
@@ -698,17 +703,17 @@ const char* key;
 const char* value;
     CODE:
     {
-        av_metadata_set2(&ctx->metadata, key, value, 0);
+        av_dict_set(&ctx->metadata, key, value, 0);
     }
 
     
 void
-avs_write_header(ctx)
+avs_write_header_and_metadata(ctx)
 AVFormatContext* ctx;
     CODE:
     {
-        av_write_header(ctx);
-        av_metadata_free(&ctx->metadata);
+        avformat_write_header(ctx, &ctx->metadata);
+        av_dict_free(&ctx->metadata);
     }
 
 void

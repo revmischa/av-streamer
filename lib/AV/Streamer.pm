@@ -198,7 +198,7 @@ sub stream {
 
 =item stream_frame
 
-Reads a frame from input and encodes it to output streams
+Reads a packet from input and possibly encodes it to output streams
 
 =cut
 sub stream_frame {
