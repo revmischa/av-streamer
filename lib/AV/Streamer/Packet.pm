@@ -23,14 +23,22 @@ sub stream_index {
     return AV::Streamer::avs_get_avpacket_stream_index($self->avpacket);
 }
 
-sub raw_dts {
+sub dts {
     my ($self) = @_;
 
     return unless $self->avpacket;
     return AV::Streamer::avs_get_avpacket_dts($self->avpacket);
 }
 
+sub pts {
+    my ($self) = @_;
+
+    return unless $self->avpacket;
+    return AV::Streamer::avs_get_avpacket_pts($self->avpacket);
+}
+
 # returns PTS scaled to stream's timebase. uses $global_pts if unable to determine packet's DTS
+# ugh, don't use
 sub scaled_pts {
     my ($self, $stream, $global_pts) = @_;
 

@@ -6,7 +6,7 @@ use Moose;
 use namespace::autoclean;
 use AV::Streamer;
 
-has 'frame' => (
+has 'avframe' => (
     is => 'rw',
     required => 1,
 );
@@ -33,36 +33,42 @@ has 'seq_num' => (
 sub get_repeat_pict {
     my ($self) = @_;
     
-    return AV::Streamer::avs_get_frame_repeat_pict($self->frame);
+    return AV::Streamer::avs_get_avframe_repeat_pict($self->avframe);
 }
 
 # return address of line of pixel data, it will be line_size bytes long
 sub get_line {
     my ($self, $y) = @_;
     
-    return AV::Streamer::avs_get_frame_line_pointer($self->frame, $y);
+    return AV::Streamer::avs_get_avframe_line_pointer($self->avframe, $y);
 }
 
 sub line_size {
     my ($self) = @_;
     
-    return AV::Streamer::avs_get_line_size($self->frame, $self->width);
+    return AV::Streamer::avs_get_line_size($self->avframe, $self->width);
 }
 
 sub frame_size {
     my ($self) = @_;
     
-    return AV::Streamer::avs_get_frame_size(
-        $self->frame, $self->line_size, $self->height,
+    return AV::Streamer::avs_get_avframe_size(
+        $self->avframe, $self->line_size, $self->height,
     );
 }
 
 sub pixel_data {
     my ($self) = @_;
     
-    return AV::Streamer::avs_get_frame_data(
+    return AV::Streamer::avs_get_avframe_data(
         $self->frame, $self->width, $self->height, $self->line_size, $self->frame_size,
     );
+}
+
+sub pts {
+    my ($self) = @_;
+
+    return AV::Streamer::avs_get_avframe_pts($self->frame);
 }
 
 __PACKAGE__->meta->make_immutable;

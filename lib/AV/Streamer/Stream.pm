@@ -263,7 +263,7 @@ sub write_packet {
 
         if ($status && $status > 0 && $oavframe) {
             # encode $oavframe into $oavpkt
-            $ret = $self->encode_frame($istream, $ipkt, $oavframe, $oavpkt);
+            $ret = $self->encode_frame($istream, $ipkt, $oavframe, $self, $oavpkt);
 
             if ($ret > 0) {
                 # write packet to output

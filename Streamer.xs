@@ -274,7 +274,14 @@ AVPacket *pkt;
     OUTPUT: RETVAL
 
 AVS_PTS
-avs_get_avframe_dts(frame)
+avs_get_avpacket_pts(pkt)
+AVPacket *pkt;
+    CODE:
+        RETVAL = pkt->pts;
+    OUTPUT: RETVAL
+
+AVS_PTS
+avs_get_avframe_pkt_dts(frame)
 AVFrame *frame;
     CODE:
         RETVAL = frame->pkt_dts;
@@ -284,7 +291,7 @@ AVS_PTS
 avs_get_avframe_pts(frame)
 AVFrame *frame;
     CODE:
-        RETVAL = frame->pkt_pts;
+        RETVAL = frame->pts;
     OUTPUT: RETVAL
 
 AVS_PTS
@@ -294,6 +301,15 @@ AVS_PTS in_pts;
 AVS_PTS dts;
     CODE: { RETVAL = guess_correct_pts(ctx, in_pts, dts); }
     OUTPUT: RETVAL
+
+AVS_PTS
+avs_scale_pts(AVS_PTS pts, AVStream *stream)
+     CODE:
+     {
+         pts *= av_q2d(stream->time_base);
+         RETVAL = pts;
+     }
+     OUTPUT: RETVAL
     
 AVS_PTS
 avs_get_avpacket_scaled_pts(pkt, stream, global_pts)
@@ -428,7 +444,7 @@ AVS_PTS pts;
     OUTPUT: RETVAL
 
 int
-avs_decode_video_frame(format_ctx, istream, ipkt, pts_ctx, OUT AVS_PTS pts, oframe)
+avs_decode_video_frame(format_ctx, istream, ipkt, pts_ctx, oframe)
 AVFormatContext* format_ctx;
 AVStream* istream;
 AVPacket* ipkt;
@@ -457,13 +473,15 @@ AVFrame* oframe;
              XSRETURN_UNDEF;
          }
 
-         /* figure out decoded frame PTS */
-         if (ipkt->pts == AV_NOPTS_VALUE)
-             pts = 0;
-         else
-             pts = guess_correct_pts(pts_ctx, oframe->pkt_pts, oframe->pkt_dts);
-
-             
+         /* figure out PTS to stash in decoded frame */
+         if (oframe->pts == AV_NOPTS_VALUE) {
+             if (istream->pts.val)
+                 oframe->pts = (double)istream->pts.val * istream->time_base.num / istream->time_base.den;
+             else
+                 oframe->pts = 0;
+         } else {
+             oframe->pts = guess_correct_pts(pts_ctx, oframe->pkt_pts, oframe->pkt_dts);
+         }
      }
      OUTPUT: RETVAL
 
@@ -552,14 +570,14 @@ AVCodecContext* c;
     OUTPUT: RETVAL
 
 int
-avs_get_frame_repeat_pict(f)
+avs_get_avframe_repeat_pict(f)
 AVFrame* f;
     CODE:
         RETVAL = f->repeat_pict;
     OUTPUT: RETVAL
 
 char*
-avs_get_frame_line_pointer(frame, y)
+avs_get_avframe_line_pointer(frame, y)
 AVFrame* frame;
 unsigned int y;
     CODE:
@@ -569,7 +587,7 @@ unsigned int y;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_frame_size(frame, line_size, height)
+avs_get_avframe_size(frame, line_size, height)
 AVFrame* frame;
 unsigned int line_size;
 unsigned int height;
@@ -595,7 +613,7 @@ unsigned int width;
     OUTPUT: RETVAL
 
 SV*
-avs_get_frame_data(frame, width, height, line_size, frame_size)
+avs_get_avframe_data(frame, width, height, line_size, frame_size)
 AVFrame* frame;
 unsigned int width;
 unsigned int height;
