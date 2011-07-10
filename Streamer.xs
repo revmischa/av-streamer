@@ -51,13 +51,14 @@ char* uri;
             croak("Unable to lock mutex AVFormatCtxMP for %s: %s", uri, sys_errlist[lock_status]);
         };
 
-        AVFormatContext *formatCtx;
-
-        if ( avformat_open_input(&formatCtx, uri, NULL, NULL) != 0 )
+        AVFormatContext *format_ctx = NULL;
+        
+        /* note: format_ctx allocated for us on success */
+        if ( avformat_open_input(&format_ctx, uri, NULL, NULL) != 0 )
             XSRETURN_UNDEF;
 
         /* make sure we can read the stream */
-        int ret = av_find_stream_info(formatCtx);
+        int ret = av_find_stream_info(format_ctx);
         if ( ret < 0 ) {
             fprintf(stderr, "Failed to find codec parameters for input %s\n", uri);
             XSRETURN_UNDEF;
@@ -69,7 +70,7 @@ char* uri;
             fprintf(stderr, "Unable to unlock mutex AVFormatCtxMP for %s: %s", uri, sys_errlist[lock_status]);
         };
 
-        RETVAL = formatCtx;
+        RETVAL = format_ctx;
     }
     OUTPUT: RETVAL
 

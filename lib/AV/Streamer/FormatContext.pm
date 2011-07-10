@@ -403,7 +403,7 @@ sub write_header {
     my ($self) = @_;
 
     my $ret = AV::Streamer::avs_write_header_and_metadata($self->avformat);
-    $self->metadata_written(1);
+    $self->header_written(1);
     return $ret;
 }
 
