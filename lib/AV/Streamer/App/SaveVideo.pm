@@ -1,13 +1,13 @@
-package Video::FFmpeg::FrameDecoder::App::SaveFrames;
+package AV::FrameDecoder::App::SaveFrames;
 
 use Moose;
     with 'MooseX::Getopt';
-    with 'Video::FFmpeg::FrameDecoder::FrameHandler';
+    with 'AV::FrameDecoder::FrameHandler';
     
 use namespace::autoclean;
 use Carp qw/croak/;
 
-use Video::FFmpeg::FrameDecoder;
+use AV::FrameDecoder;
 
 has 'output_context' => (
     is => 'rw',
@@ -24,7 +24,7 @@ after 'decoding_started' => sub {
     my $output_context;
 
     # specify format shortname
-    $output_context = Video::FFmpeg::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_file_name, $self->output_format);
+    $output_context = AV::FrameDecoder::ffv_fd_new_output_format_ctx($self->output_file_name, $self->output_format);
     unless ($output_context) {
         if ($self->output_format) {
             die "Failed to create context for format '" . $self->output_format . "'\n";
@@ -39,7 +39,7 @@ after 'decoding_started' => sub {
     my $bitrate = $self->dest_bitrate || $codec_ctx->bitrate;
     
     my $output_video_stream =
-    Video::FFmpeg::FrameDecoder::ffv_fd_new_output_video_stream(
+    AV::FrameDecoder::ffv_fd_new_output_video_stream(
         $output_context,
         $codec_ctx->width,
         $codec_ctx->height,
@@ -54,21 +54,21 @@ after 'decoding_started' => sub {
 
     $self->output_video_stream($output_video_stream);
     
-    Video::FFmpeg::FrameDecoder::ffv_fd_write_header($output_context);
+    AV::FrameDecoder::ffv_fd_write_header($output_context);
 };
 
 # clean up
 after 'decoding_finished' => sub {
     my ($self, $codec_ctx) = @_;
 
-    Video::FFmpeg::FrameDecoder::ffv_fd_write_trailer($self->output_context);
+    AV::FrameDecoder::ffv_fd_write_trailer($self->output_context);
 
-    Video::FFmpeg::FrameDecoder::ffv_fd_close_stream(
+    AV::FrameDecoder::ffv_fd_close_stream(
             $self->output_context,
             $self->output_video_stream,
     ) if $self->output_video_stream;
     
-    Video::FFmpeg::FrameDecoder::ffv_fd_close_output_format_ctx($self->output_context)
+    AV::FrameDecoder::ffv_fd_close_output_format_ctx($self->output_context)
          if $self->output_context;
 };
 
@@ -79,7 +79,7 @@ sub frame_decoded {
     my $frame_size = $frame->frame_size;
 
     # write frame to output stream
-    Video::FFmpeg::FrameDecoder::ffv_fd_write_frame_to_output_video_stream(
+    AV::FrameDecoder::ffv_fd_write_frame_to_output_video_stream(
         $self->output_context,
         $codec_ctx->codec_ctx,
         $self->output_video_stream,

@@ -1,10 +1,10 @@
 # This class represents a decoded frame
 # (this is unused currently, right now we only deal in raw AVFrames. instantiating a new Frame each frame seems like a lot of overhead)
-package Video::FFmpeg::Streamer::Frame;
+package AV::Streamer::Frame;
 
 use Moose;
 use namespace::autoclean;
-use Video::FFmpeg::Streamer;
+use AV::Streamer;
 
 has 'frame' => (
     is => 'rw',
@@ -33,26 +33,26 @@ has 'seq_num' => (
 sub get_repeat_pict {
     my ($self) = @_;
     
-    return Video::FFmpeg::Streamer::avs_get_frame_repeat_pict($self->frame);
+    return AV::Streamer::avs_get_frame_repeat_pict($self->frame);
 }
 
 # return address of line of pixel data, it will be line_size bytes long
 sub get_line {
     my ($self, $y) = @_;
     
-    return Video::FFmpeg::Streamer::avs_get_frame_line_pointer($self->frame, $y);
+    return AV::Streamer::avs_get_frame_line_pointer($self->frame, $y);
 }
 
 sub line_size {
     my ($self) = @_;
     
-    return Video::FFmpeg::Streamer::avs_get_line_size($self->frame, $self->width);
+    return AV::Streamer::avs_get_line_size($self->frame, $self->width);
 }
 
 sub frame_size {
     my ($self) = @_;
     
-    return Video::FFmpeg::Streamer::avs_get_frame_size(
+    return AV::Streamer::avs_get_frame_size(
         $self->frame, $self->line_size, $self->height,
     );
 }
@@ -60,7 +60,7 @@ sub frame_size {
 sub pixel_data {
     my ($self) = @_;
     
-    return Video::FFmpeg::Streamer::avs_get_frame_data(
+    return AV::Streamer::avs_get_frame_data(
         $self->frame, $self->width, $self->height, $self->line_size, $self->frame_size,
     );
 }

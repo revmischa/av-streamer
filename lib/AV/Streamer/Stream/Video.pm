@@ -1,11 +1,11 @@
-package Video::FFmpeg::Streamer::Stream::Video;
+package AV::Streamer::Stream::Video;
 
 use Moose;
 use namespace::autoclean;
-use Video::FFmpeg::Streamer;
-use Video::FFmpeg::Streamer::Packet;
+use AV::Streamer;
+use AV::Streamer::Packet;
 
-extends 'Video::FFmpeg::Streamer::Stream';
+extends 'AV::Streamer::Stream';
 
 use Carp qw/croak/;
 
@@ -44,7 +44,7 @@ has 'pixel_format' => (
 has 'clock' => (
     is => 'rw',
     isa => 'Num',
-    default => sub { Video::FFmpeg::Streamer::avs_no_pts_value() },
+    default => sub { AV::Streamer::avs_no_pts_value() },
 );
 
 # decode $iavpkt into $oavframe
@@ -57,7 +57,7 @@ sub decode_packet {
 
     # read $iavpkt, if able to decode then it is stored in $oavframe
     # will return < 0 on error, 0 if not enough data was passed to decode a frame
-    my $res = Video::FFmpeg::Streamer::avs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $oavframe);
+    my $res = AV::Streamer::avs_decode_video_frame($fmt, $istream->avstream, $iavpkt, $oavframe);
 
     if ($res && ref $res) {
         # this shouldn't happen!
@@ -88,13 +88,13 @@ sub encode_frame {
 
     # update the video clock
     my $frame_delay = $self->frame_delay;
-    my $repeat_pict = Video::FFmpeg::Streamer::avs_get_frame_repeat_pict($iavframe);
+    my $repeat_pict = AV::Streamer::avs_get_frame_repeat_pict($iavframe);
     # if we are repeating a frame, adjust clock accordingly
     $frame_delay += $repeat_pict * ($frame_delay * 0.5);
     $pts = $self->clock + $frame_delay;
     $self->clock($pts);
 
-    my $res = Video::FFmpeg::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
+    my $res = AV::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 
     if ($res < 0) {
         warn "failed to encode frame";
@@ -110,10 +110,10 @@ after 'create_avstream' => sub {
     my $oavstream = $self->avstream;
 
     if ($self->stream_copy) {
-        my $ok = Video::FFmpeg::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
+        my $ok = AV::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
-        my $ok = Video::FFmpeg::Streamer::avs_set_video_stream_params(
+        my $ok = AV::Streamer::avs_set_video_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
             $self->codec_name,

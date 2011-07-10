@@ -1,8 +1,8 @@
-package Video::FFmpeg::FrameDecoder::FrameHandler;
+package AV::FrameDecoder::FrameHandler;
 
 use Moose::Role;
     
-use Video::FFmpeg::FrameDecoder;
+use AV::FrameDecoder;
 
 # how many frames to decode, 0 for all
 has 'frame_count' => (
@@ -66,7 +66,7 @@ has 'dest_pix_format' => (
 sub run {
     my ($self) = @_;
     
-    my $fd = Video::FFmpeg::FrameDecoder->new(
+    my $fd = AV::FrameDecoder->new(
         debug => $self->debug,
     );
     

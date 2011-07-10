@@ -1,10 +1,10 @@
-package Video::FFmpeg::Streamer::Stream::Audio;
+package AV::Streamer::Stream::Audio;
 
 use Moose;
 use namespace::autoclean;
-use Video::FFmpeg::Streamer;
+use AV::Streamer;
 
-extends 'Video::FFmpeg::Streamer::Stream';
+extends 'AV::Streamer::Stream';
 
 use Carp qw/croak/;
 
@@ -24,10 +24,10 @@ after 'create_avstream' => sub {
     my $oavstream = $self->avstream;
 
     if ($self->stream_copy) {
-        my $ok = Video::FFmpeg::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
+        my $ok = AV::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
-        my $ok = Video::FFmpeg::Streamer::avs_set_audio_stream_params(
+        my $ok = AV::Streamer::avs_set_audio_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
             $self->codec_name,

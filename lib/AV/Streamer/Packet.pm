@@ -1,9 +1,9 @@
-package Video::FFmpeg::Streamer::Packet;
+package AV::Streamer::Packet;
 
 use Moose;
 use namespace::autoclean;
 
-use Video::FFmpeg::Streamer;
+use AV::Streamer;
 
 has 'avpacket' => (
     is => 'rw',
@@ -20,14 +20,14 @@ sub stream_index {
     my ($self) = @_;
 
     return unless $self->avpacket;
-    return Video::FFmpeg::Streamer::avs_get_avpacket_stream_index($self->avpacket);
+    return AV::Streamer::avs_get_avpacket_stream_index($self->avpacket);
 }
 
 sub raw_dts {
     my ($self) = @_;
 
     return unless $self->avpacket;
-    return Video::FFmpeg::Streamer::avs_get_avpacket_dts($self->avpacket);
+    return AV::Streamer::avs_get_avpacket_dts($self->avpacket);
 }
 
 # returns PTS scaled to stream's timebase. uses $global_pts if unable to determine packet's DTS
@@ -35,14 +35,14 @@ sub scaled_pts {
     my ($self, $stream, $global_pts) = @_;
 
     return unless $self->avpacket;
-    return Video::FFmpeg::Streamer::avs_get_avpacket_scaled_pts($self->avpacket, $stream->avstream, $global_pts);
+    return AV::Streamer::avs_get_avpacket_scaled_pts($self->avpacket, $stream->avstream, $global_pts);
 }
 
 sub DEMOLISH {
     my ($self) = @_;
 
     if ($self->avpacket) {
-        Video::FFmpeg::Streamer::avs_free_avpacket_data($self->avpacket);
+        AV::Streamer::avs_free_avpacket_data($self->avpacket);
     }
 }
 

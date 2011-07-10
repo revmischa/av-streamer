@@ -1,8 +1,8 @@
-package Video::FFmpeg::FrameDecoder::CodecContext;
+package AV::FrameDecoder::CodecContext;
 
 use Moose;
 use namespace::autoclean;
-use Video::FFmpeg::FrameDecoder;
+use AV::FrameDecoder;
 
 use Carp qw/croak/;
 
@@ -61,44 +61,44 @@ has 'frame_decode_callback' => (
 # ->frame_decoded() when a frame is decoded
 has 'frame_decode_delegate' => (
     is => 'rw',
-    does => 'Video::FFmpeg::FrameDecoder::FrameHandler',
+    does => 'AV::FrameDecoder::FrameHandler',
 );
 
 sub width {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_width($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_width($self->codec_ctx);
 }
 
 sub height {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_height($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_height($self->codec_ctx);
 }
 
 sub bitrate {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_bitrate($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_bitrate($self->codec_ctx);
 }
 
 # time base denominator
 sub base_den {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_base_den($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_base_den($self->codec_ctx);
 }
 
 # time base numerator
 sub base_num {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_base_num($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_base_num($self->codec_ctx);
 }
 
 sub pixfmt {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_pixfmt($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_pixfmt($self->codec_ctx);
 }
 
 sub gopsize {
     my ($self) = @_;
-    return Video::FFmpeg::FrameDecoder::ffv_fd_get_codec_ctx_gopsize($self->codec_ctx);
+    return AV::FrameDecoder::ffv_fd_get_codec_ctx_gopsize($self->codec_ctx);
 }
 
 # start decoding frames
@@ -110,7 +110,7 @@ sub start_decoding {
     my $callback = delete $opts{callback};
     my $delegate = delete $opts{delegate};
     
-    if ($delegate && ! $delegate->does('Video::FFmpeg::FrameDecoder::FrameHandler')) {
+    if ($delegate && ! $delegate->does('AV::FrameDecoder::FrameHandler')) {
         croak "Delegate $delegate does not implement the FrameHandler role";
     }
     
@@ -138,7 +138,7 @@ sub decode_frames {
         my ($seq_num, $w, $h) = @_;
 
         # create a Frame instance representing it
-        my $frame = Video::FFmpeg::FrameDecoder::Frame->new(
+        my $frame = AV::FrameDecoder::Frame->new(
             frame   => $dest_frame,
             width   => $w,
             height  => $h,
@@ -152,7 +152,7 @@ sub decode_frames {
     $decoded_delegate->decoding_started($self) if $decoded_delegate;
     
     # mega awesome frame decoding function
-    my $ret = Video::FFmpeg::FrameDecoder::ffv_fd_decode_frames(
+    my $ret = AV::FrameDecoder::ffv_fd_decode_frames(
         $self->format_ctx,
         $self->codec_ctx,
         $self->stream_index,
@@ -195,13 +195,13 @@ sub prepare_video_frame_decoding {
     return if $self->decoding_prepared;
 
     # allocate frame structures
-    my $src_frame = Video::FFmpeg::FrameDecoder::ffv_fd_alloc_frame();
-    my $dst_frame = Video::FFmpeg::FrameDecoder::ffv_fd_alloc_frame();
+    my $src_frame = AV::FrameDecoder::ffv_fd_alloc_frame();
+    my $dst_frame = AV::FrameDecoder::ffv_fd_alloc_frame();
     $self->source_frame($src_frame);
     $self->dest_frame($dst_frame);
     
     # allocate storage for RGB frame decoding buffer
-    my $frame_decode_buffer = Video::FFmpeg::FrameDecoder::ffv_fd_alloc_frame_buffer(
+    my $frame_decode_buffer = AV::FrameDecoder::ffv_fd_alloc_frame_buffer(
         $self->codec_ctx,
         $dst_frame,
         $self->dest_pix_format_raw,
@@ -217,20 +217,20 @@ sub finish_video_frame_decoding {
     
     # release allocated frames
     {
-        Video::FFmpeg::FrameDecoder::ffv_fd_dealloc_frame($self->source_frame)
+        AV::FrameDecoder::ffv_fd_dealloc_frame($self->source_frame)
             if $self->source_frame_allocated;
 
-        Video::FFmpeg::FrameDecoder::ffv_fd_dealloc_frame($self->dest_frame)
+        AV::FrameDecoder::ffv_fd_dealloc_frame($self->dest_frame)
             if $self->dest_frame_allocated;
     }
 
     # release frame decoding buffer
     if ($self->frame_decode_buffer_allocated) {
-        Video::FFmpeg::FrameDecoder::ffv_fd_dealloc_frame_buffer($self->frame_decode_buffer);
+        AV::FrameDecoder::ffv_fd_dealloc_frame_buffer($self->frame_decode_buffer);
     }
 
     # close codec
-    Video::FFmpeg::FrameDecoder::ffv_fd_close_codec($self->codec_ctx);
+    AV::FrameDecoder::ffv_fd_close_codec($self->codec_ctx);
     
     $self->decoding_prepared(0);
 }

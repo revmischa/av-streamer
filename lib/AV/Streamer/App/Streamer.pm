@@ -1,4 +1,4 @@
-package Video::FFmpeg::Streamer::App::Streamer;
+package AV::Streamer::App::Streamer;
 
 use Moose;
     with 'MooseX::Getopt';
@@ -6,11 +6,11 @@ use Moose;
 use namespace::autoclean;
 use Carp qw/croak/;
 
-use Video::FFmpeg::Streamer;
+use AV::Streamer;
 
 has 'streamer' => (
     is => 'rw',
-    isa => 'Video::FFmpeg::Streamer',
+    isa => 'AV::Streamer',
     lazy_build => 1,
 );
 
@@ -78,7 +78,7 @@ sub stream {
         unless $self->output_uri;
 
     # create streamer
-    my $streamer = Video::FFmpeg::Streamer->new;
+    my $streamer = AV::Streamer->new;
     $self->streamer($streamer);
 
     # open input file

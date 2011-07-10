@@ -1,8 +1,8 @@
-package Video::FFmpeg::Streamer::OutputFormat;
+package AV::Streamer::OutputFormat;
 
 use Moose;
 use namespace::autoclean;
-use Video::FFmpeg::Streamer;
+use AV::Streamer;
 
 use Carp qw/croak/;
 
@@ -22,7 +22,7 @@ sub find_output_format {
     $format ||= '';
     croak "uri or format is required" unless $uri || $format;
 
-    my $ofmt = Video::FFmpeg::Streamer::avs_find_output_format($uri, $format);
+    my $ofmt = AV::Streamer::avs_find_output_format($uri, $format);
     return unless $ofmt;
 
     return $class->new(ofmt => $ofmt);

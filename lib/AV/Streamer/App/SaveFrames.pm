@@ -1,8 +1,8 @@
-package Video::FFmpeg::FrameDecoder::App::SaveFrames;
+package AV::FrameDecoder::App::SaveFrames;
 
 use Moose;
     with 'MooseX::Getopt';
-    with 'Video::FFmpeg::FrameDecoder::FrameHandler';
+    with 'AV::FrameDecoder::FrameHandler';
 
 use namespace::autoclean;
 
