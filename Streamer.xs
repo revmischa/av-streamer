@@ -273,6 +273,21 @@ AVPacket *pkt;
     OUTPUT: RETVAL
 
 AVS_PTS
+avs_get_avframe_dts(frame)
+AVFrame *frame;
+    CODE:
+        RETVAL = frame->pkt_dts;
+    OUTPUT: RETVAL
+
+AVS_PTS
+avs_guess_correct_pts(ctx, in_pts, dts)
+PtsCorrectionContext *ctx;
+AVS_PTS in_pts;
+AVS_PTS dts;
+    CODE: { RETVAL = guess_correct_pts(ctx, in_pts, dts); }
+    OUTPUT: RETVAL
+    
+AVS_PTS
 avs_get_avpacket_scaled_pts(pkt, stream, global_pts)
 AVPacket *pkt;
 AVStream *stream;

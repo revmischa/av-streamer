@@ -28,9 +28,10 @@ WriteMakefile(
     },
 
     LIBS           => ["-lswscale $lavf_lib"],
+    C              => ["StreamerUtils"],
     DEFINE         => '',
     INC            => "-I. $lavf_inc",
 
 	# Un-comment this if you add C files to link with later:
-    # OBJECT            => '$(O_FILES)', # link all the C files too
+    OBJECT            => '$(O_FILES) StreamerUtils.o', # link all the C files too
 );

@@ -74,10 +74,13 @@ sub decode_packet {
 
 # encode $iavframe into $oavpkt
 sub encode_frame {
-    my ($self, $iavframe, $oavpkt, $pts) = @_;
+    my ($self, $istream, $ipkt, $iavframe, $oavpkt) = @_;
 
-    #croak "PTS value required in encode_frame"
-    #    unless defined $pts;
+    # figure out our current PTS
+    my $pts = $ipkt->scaled_pts($istream, $self->global_pts);
+    $pts = AV::Streamer::avs_guess_correct_pts($self->pts_correction_ctx, $pts, $iavframe);
+
+    warn "got pts: $pts";
 
     if ($pts) {
         # if we know our pts, set clock to it

@@ -24,7 +24,7 @@ has 'format_ctx' => (
     isa => 'AV::Streamer::FormatContext',
     required => 1,
     weak_ref => 1,
-    handles => [qw/ global_pts /],
+    handles => [qw/ global_pts pts_correction_ctx /],
 );
 
 has 'index' => (
@@ -248,11 +248,8 @@ sub write_packet {
         my $status = $self->decode_packet($istream, $ipkt->avpacket, $oavframe);
 
         if ($status && $status > 0 && $oavframe) {
-            # figure out our current PTS
-            my $pts = $ipkt->scaled_pts($istream, $self->global_pts);
-
             # encode $oavframe into $oavpkt
-            $ret = $self->encode_frame($oavframe, $oavpkt, $pts);
+            $ret = $self->encode_frame($istream, $ipkt, $oavframe, $oavpkt);
 
             if ($ret > 0) {
                 # write packet to output

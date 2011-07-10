@@ -3,6 +3,12 @@
 
 /* libav streaming XS wrapper header */
 
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
 
 #pragma mark types
 typedef enum CodecID    CodecID;
