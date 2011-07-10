@@ -1,17 +1,17 @@
 use Test::More tests => 4;
 use Findbin;
-BEGIN { use_ok('Video::FFmpeg::Streamer') };
+BEGIN { use_ok('AV::Streamer') };
 
 use strict;
 use warnings;
 
-my $ffs = new Video::FFmpeg::Streamer();
+my $avs = new AV::Streamer();
 my $test_file = "$FindBin::Bin/../sample_mpeg4.mp4";
-ok($ffs->open_uri($test_file), "opened stream");
+ok($avs->open_uri($test_file), "opened stream");
 
-$ffs->dump_format;
+$avs->dump_format;
 
-my $codec_ctx = $ffs->open_video_stream_codec;
+my $codec_ctx = $avs->open_video_stream_codec;
 ok($codec_ctx, "opened codec decoder");
 
 my $cb_called;
@@ -26,5 +26,5 @@ $codec_ctx->decode_frames(1);
 
 ok($cb_called, "Frame decoded and callback called");
 
-undef $ffs;
+undef $avs;
 

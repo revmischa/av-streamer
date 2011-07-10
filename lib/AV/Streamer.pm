@@ -151,7 +151,7 @@ sub input_ctx { $_[0]->input_format_context->avformat }
 sub open_uri {
     my ($self, $uri) = @_;
 
-    my $fmt = ffs_open_uri($uri);
+    my $fmt = avs_open_uri($uri);
     if (! $fmt || ! ref $fmt) {
         $self->debug("Failed to open $uri");
         return;

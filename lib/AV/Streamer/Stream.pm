@@ -106,19 +106,19 @@ has 'avstream_allocated' => (
 sub build_output_buffer {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_alloc_output_buffer($self->output_buffer_size);
+    return Video::FFmpeg::Streamer::avs_alloc_output_buffer($self->output_buffer_size);
 }
 
 sub build_output_avpacket {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+    return Video::FFmpeg::Streamer::avs_alloc_avpacket();
 }
 
 sub build_output_avframe {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_alloc_avframe();
+    return Video::FFmpeg::Streamer::avs_alloc_avframe();
 }
 
 sub create_avstream {
@@ -133,7 +133,7 @@ sub create_avstream {
     my $codec_name = $self->codec_name
         or croak "Attempting to create stream without codec type defined";
 
-    my $oavstream = Video::FFmpeg::Streamer::ffs_create_stream($self->format_ctx->avformat)
+    my $oavstream = Video::FFmpeg::Streamer::avs_create_stream($self->format_ctx->avformat)
         or die "Failed to create new video stream for codec " . $self->codec_name;
 
     $self->avstream($oavstream);
@@ -145,7 +145,7 @@ sub create_avstream {
 sub build_codec_ctx {
     my ($self) = @_;
 
-    my $ctx = Video::FFmpeg::Streamer::ffs_get_codec_ctx($self->avstream);
+    my $ctx = Video::FFmpeg::Streamer::avs_get_codec_ctx($self->avstream);
     unless ($ctx) {
         warn "Failed to get codec context for AVStream " . $self->avstream;
         return;
@@ -163,7 +163,7 @@ sub needs_encoding {
 sub build_index {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_get_stream_index($self->avstream);
+    return Video::FFmpeg::Streamer::avs_get_stream_index($self->avstream);
 }
 
 sub BUILD {
@@ -190,39 +190,39 @@ sub open_decoder {
     }
 
     # make sure we have a codec ID (should be already found from av_find_stream_info)
-    my $codec_id = Video::FFmpeg::Streamer::ffs_get_stream_codec_id($self->avstream);
+    my $codec_id = Video::FFmpeg::Streamer::avs_get_stream_codec_id($self->avstream);
     unless ($codec_id) {
         warn "Failed to find codec ID for stream " . $self->avstream .
             ". Perhaps the codec format is unknown.";
         return;
     }
 
-    unless (Video::FFmpeg::Streamer::ffs_open_decoder($avcodec_ctx, $codec_id)) {
+    unless (Video::FFmpeg::Streamer::avs_open_decoder($avcodec_ctx, $codec_id)) {
         warn "Could not open decoder for AVStream " . $self->avstream . " codec ID $codec_id";
         return;
     }
     $self->codec_open(1);
 
     # extract info from the AVStream and codec context:
-    $self->bit_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_bitrate($avcodec_ctx));
-    $self->codec_name(Video::FFmpeg::Streamer::ffs_get_codec_ctx_codec_name($avcodec_ctx));
+    $self->bit_rate(Video::FFmpeg::Streamer::avs_get_codec_ctx_bitrate($avcodec_ctx));
+    $self->codec_name(Video::FFmpeg::Streamer::avs_get_codec_ctx_codec_name($avcodec_ctx));
     if ($self->is_video_stream) {
-        $self->width(Video::FFmpeg::Streamer::ffs_get_codec_ctx_width($avcodec_ctx));
-        $self->height(Video::FFmpeg::Streamer::ffs_get_codec_ctx_height($avcodec_ctx));
-        $self->base_den(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_den($avcodec_ctx));
-        $self->base_num(Video::FFmpeg::Streamer::ffs_get_codec_ctx_base_num($avcodec_ctx));
-        $self->pixel_format(Video::FFmpeg::Streamer::ffs_get_codec_ctx_pixfmt($avcodec_ctx));
-        $self->gop_size(Video::FFmpeg::Streamer::ffs_get_codec_ctx_gopsize($avcodec_ctx));
+        $self->width(Video::FFmpeg::Streamer::avs_get_codec_ctx_width($avcodec_ctx));
+        $self->height(Video::FFmpeg::Streamer::avs_get_codec_ctx_height($avcodec_ctx));
+        $self->base_den(Video::FFmpeg::Streamer::avs_get_codec_ctx_base_den($avcodec_ctx));
+        $self->base_num(Video::FFmpeg::Streamer::avs_get_codec_ctx_base_num($avcodec_ctx));
+        $self->pixel_format(Video::FFmpeg::Streamer::avs_get_codec_ctx_pixfmt($avcodec_ctx));
+        $self->gop_size(Video::FFmpeg::Streamer::avs_get_codec_ctx_gopsize($avcodec_ctx));
     } else {
-        $self->channels(Video::FFmpeg::Streamer::ffs_get_codec_ctx_channels($avcodec_ctx));
-        $self->sample_rate(Video::FFmpeg::Streamer::ffs_get_codec_ctx_sample_rate($avcodec_ctx));
+        $self->channels(Video::FFmpeg::Streamer::avs_get_codec_ctx_channels($avcodec_ctx));
+        $self->sample_rate(Video::FFmpeg::Streamer::avs_get_codec_ctx_sample_rate($avcodec_ctx));
     }
 }
 
 sub frame_delay {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_get_codec_ctx_frame_delay($self->avcodec_ctx);
+    return Video::FFmpeg::Streamer::avs_get_codec_ctx_frame_delay($self->avcodec_ctx);
 }
 
 # write packet $ipkt, encoding video if necessary
@@ -236,7 +236,7 @@ sub write_packet {
     my $oavframe = $self->_output_avframe;
 
     # is this needed? does decode_packet do this for us?
-    Video::FFmpeg::Streamer::ffs_init_avpacket($oavpkt);
+    Video::FFmpeg::Streamer::avs_init_avpacket($oavpkt);
 
     my $ret;
 
@@ -256,19 +256,19 @@ sub write_packet {
 
             if ($ret > 0) {
                 # write packet to output
-                $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
+                $ret = Video::FFmpeg::Streamer::avs_write_frame($oavformat, $oavpkt);
             }
         }
     } else {
         # copy input packet to output packet, updating pts/dts
-        Video::FFmpeg::Streamer::ffs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
+        Video::FFmpeg::Streamer::avs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
 
         # write packet to output
-        $ret = Video::FFmpeg::Streamer::ffs_write_frame($oavformat, $oavpkt);
+        $ret = Video::FFmpeg::Streamer::avs_write_frame($oavformat, $oavpkt);
     }
     
-    Video::FFmpeg::Streamer::ffs_free_avpacket_data($oavpkt); # right??
-    #Video::FFmpeg::Streamer::ffs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
+    Video::FFmpeg::Streamer::avs_free_avpacket_data($oavpkt); # right??
+    #Video::FFmpeg::Streamer::avs_dealloc_avpacket($oavpkt); # av_free() works, av_freep doesnt, why?
 
     return $ret && $ret > -1;
 }
@@ -289,7 +289,7 @@ sub decode_packet {
 sub is_video_stream {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_is_video_stream($self->avstream);
+    return Video::FFmpeg::Streamer::avs_is_video_stream($self->avstream);
 }
 
 =item is_audio_stream
@@ -298,20 +298,20 @@ sub is_video_stream {
 sub is_audio_stream {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_is_audio_stream($self->avstream);
+    return Video::FFmpeg::Streamer::avs_is_audio_stream($self->avstream);
 }
 
 sub destroy_stream {
     my ($self) = @_;
 
     if ($self->codec_open) {
-        Video::FFmpeg::Streamer::ffs_close_codec($self->avcodec_ctx)
+        Video::FFmpeg::Streamer::avs_close_codec($self->avcodec_ctx)
             if $self->has_avcodec_ctx && $self->avcodec_ctx;
 
         $self->codec_open(0);
     }
 
-    Video::FFmpeg::Streamer::ffs_dealloc_stream($self->avstream)
+    Video::FFmpeg::Streamer::avs_dealloc_stream($self->avstream)
         if $self->avstream_exists && $self->avstream_allocated && $self->avstream;
 
     $self->clear_avstream;
@@ -321,13 +321,13 @@ sub destroy_stream {
 sub DEMOLISH {
     my ($self) = @_;
 
-    Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->_output_avpacket)
+    Video::FFmpeg::Streamer::avs_dealloc_avpacket($self->_output_avpacket)
         if $self->has_output_avpacket;
 
-    Video::FFmpeg::Streamer::ffs_dealloc_avframe($self->_output_avframe)
+    Video::FFmpeg::Streamer::avs_dealloc_avframe($self->_output_avframe)
         if $self->has_output_avframe;
 
-    Video::FFmpeg::Streamer::ffs_dealloc_output_buffer($self->_output_buffer)
+    Video::FFmpeg::Streamer::avs_dealloc_output_buffer($self->_output_buffer)
         if $self->has_output_buffer;
 
     $self->destroy_stream;

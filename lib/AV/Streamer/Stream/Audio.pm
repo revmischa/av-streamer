@@ -24,10 +24,10 @@ after 'create_avstream' => sub {
     my $oavstream = $self->avstream;
 
     if ($self->stream_copy) {
-        my $ok = Video::FFmpeg::Streamer::ffs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
+        my $ok = Video::FFmpeg::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
-        my $ok = Video::FFmpeg::Streamer::ffs_set_audio_stream_params(
+        my $ok = Video::FFmpeg::Streamer::avs_set_audio_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
             $self->codec_name,

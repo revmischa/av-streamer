@@ -103,7 +103,7 @@ has 'avpacket' => (
 has 'global_pts' => (
     is => 'rw',
     isa => 'Num',
-    default => sub { Video::FFmpeg::Streamer::ffs_no_pts_value() },
+    default => sub { Video::FFmpeg::Streamer::avs_no_pts_value() },
 );
 
 =back
@@ -120,7 +120,7 @@ has 'global_pts' => (
 sub build_avpacket {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_alloc_avpacket();
+    return Video::FFmpeg::Streamer::avs_alloc_avpacket();
 }
 
 # create avformatctx, open output file
@@ -149,7 +149,7 @@ sub build_avformat_ctx {
     $self->output_opened(0);
 
     # attempt to open output
-    my $fmt = Video::FFmpeg::Streamer::ffs_create_output_format_ctx($ofmt->ofmt, $uri);
+    my $fmt = Video::FFmpeg::Streamer::avs_create_output_format_ctx($ofmt->ofmt, $uri);
     unless ($fmt) {
         die "Unable to open output $uri\n";
     }
@@ -170,7 +170,7 @@ Dump debugging info about this format context to stderr
 sub dump_format {
     my ($self) = @_;
 
-    Video::FFmpeg::Streamer::ffs_dump_format($self->avformat, $self->uri);
+    Video::FFmpeg::Streamer::avs_dump_format($self->avformat, $self->uri);
 }
 
 
@@ -182,7 +182,7 @@ Add metadata to output container. Pass $value=undef to remove an item.
 sub set_metadata {
     my ($self, $key, $value) = @_;
     
-    Video::FFmpeg::Streamer::ffs_set_ctx_metadata($self->avformat, $key, $value);
+    Video::FFmpeg::Streamer::avs_set_ctx_metadata($self->avformat, $key, $value);
 }
 
 
@@ -300,7 +300,7 @@ sub get_first_audio_stream_index {
     my ($self, $n) = @_;
 
     for (my $i = 0; $i < $self->stream_count; $i++) {
-        next unless Video::FFmpeg::Streamer::ffs_is_audio_stream_index($self->avformat, $i);
+        next unless Video::FFmpeg::Streamer::avs_is_audio_stream_index($self->avformat, $i);
         return $i;
     }
     return undef;
@@ -310,7 +310,7 @@ sub get_first_video_stream_index {
     my ($self, $n) = @_;
 
     for (my $i = 0; $i < $self->stream_count; $i++) {
-        next unless Video::FFmpeg::Streamer::ffs_is_video_stream_index($self->avformat, $i);
+        next unless Video::FFmpeg::Streamer::avs_is_video_stream_index($self->avformat, $i);
         return $i;
     }
     return undef;
@@ -342,15 +342,15 @@ sub get_stream {
 
     my $stream = $self->streams->[$index];
     unless ($stream) {
-        my $avstream = Video::FFmpeg::Streamer::ffs_get_stream($self->avformat, $index);
+        my $avstream = Video::FFmpeg::Streamer::avs_get_stream($self->avformat, $index);
         croak "Unable to get stream at index $index" unless $avstream;
 
-        if (Video::FFmpeg::Streamer::ffs_is_video_stream($avstream)) {
+        if (Video::FFmpeg::Streamer::avs_is_video_stream($avstream)) {
             $stream = Video::FFmpeg::Streamer::Stream::Video->new(
                 format_ctx => $self,
                 avstream   => $avstream,
             );
-        } elsif (Video::FFmpeg::Streamer::ffs_is_audio_stream($avstream)) {
+        } elsif (Video::FFmpeg::Streamer::avs_is_audio_stream($avstream)) {
             $stream = Video::FFmpeg::Streamer::Stream::Audio->new(
                 format_ctx => $self,
                 avstream   => $avstream,
@@ -372,7 +372,7 @@ sub read_packet {
 
     my $format_ctx = $self->avformat;
     my $pkt = $self->avpacket;
-    my $ret = Video::FFmpeg::Streamer::ffs_read_packet($format_ctx, $pkt);
+    my $ret = Video::FFmpeg::Streamer::avs_read_packet($format_ctx, $pkt);
 
     my $retpkt = Video::FFmpeg::Streamer::Packet->new(
         avpacket => $pkt,
@@ -385,32 +385,32 @@ sub read_packet {
 sub stream_count {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_stream_count($self->avformat);
+    return Video::FFmpeg::Streamer::avs_stream_count($self->avformat);
 }
 
 sub write_header {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_write_header($self->avformat);
+    return Video::FFmpeg::Streamer::avs_write_header($self->avformat);
 }
 
 sub write_trailer {
     my ($self) = @_;
 
-    return Video::FFmpeg::Streamer::ffs_write_trailer($self->avformat);
+    return Video::FFmpeg::Streamer::avs_write_trailer($self->avformat);
 }
 
 sub DEMOLISH {
     my ($self) = @_;
 
-    Video::FFmpeg::Streamer::ffs_dealloc_avpacket($self->avpacket)
+    Video::FFmpeg::Streamer::avs_dealloc_avpacket($self->avpacket)
         if $self->avpacket_exists;
 
     if ($self->input_opened) {
         # this destroys the avformat context
-        Video::FFmpeg::Streamer::ffs_close_input_file($self->avformat);
+        Video::FFmpeg::Streamer::avs_close_input_file($self->avformat);
     } else {
-        Video::FFmpeg::Streamer::ffs_destroy_context($self->avformat)
+        Video::FFmpeg::Streamer::avs_destroy_context($self->avformat)
             if $self->avformat_exists;
     }
 }
