@@ -6,8 +6,8 @@
 
 #pragma mark types
 typedef enum CodecID    CodecID;
-typedef uint8_t         FFS_FrameBuffer;
-typedef double          FFS_PTS;
+typedef uint8_t         AVS_FrameBuffer;
+typedef double          AVS_PTS;
 typedef short bool_t;
 
 
