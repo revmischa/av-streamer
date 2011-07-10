@@ -1,17 +1,17 @@
 #!/usr/bin/env perl
 
-# Sample application using Video::FFmpeg::Streamer
+# Sample application using AV::Streamer
 
 use Moose;
 
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use Video::FFmpeg::Streamer::App::Streamer;
+use AV::Streamer::App::Streamer;
 
 ###
 
-my $s = Video::FFmpeg::Streamer::App::Streamer->new_with_options;
+my $s = AV::Streamer::App::Streamer->new_with_options;
 
 # get output uri
 unless ($s->output_uri) {
