@@ -17,5 +17,5 @@ README
 Streamer.xs
 StreamerUtils.c
 StreamerUtils.h
-t/Video-FFmpeg-Streamer.t
+t/AV-Streamer.t
 typemap
