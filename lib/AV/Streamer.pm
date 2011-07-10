@@ -1,28 +1,28 @@
-package Video::FFmpeg::Streamer;
+package AV::Streamer;
 
 use 5.006000;
 
 use Moose;
 use namespace::autoclean;
 
-use Video::FFmpeg::Streamer::FormatContext;
+use AV::Streamer::FormatContext;
 
 our $VERSION = '0.01';
 
 require XSLoader;
-XSLoader::load('Video::FFmpeg::Streamer', $VERSION);
+XSLoader::load('AV::Streamer', $VERSION);
 
 
 =head1 NAME
 
-Video::FFmpeg::Streamer - Module to make transcoding, saving and
+AV::Streamer - Module to make transcoding, saving and
 broadcasting AV streams simple.
 
 =head1 SYNOPSIS
 
   use Moose;
-  use Video::FFmpeg::Streamer;
-  my $streamer = Video::FFmpeg::Streamer->new;
+  use AV::Streamer;
+  my $streamer = AV::Streamer->new;
 
   # attempt to access a media stream or file path
   $streamer->open_uri('rtsp://10.0.1.2/mpeg4/media.amp')
@@ -32,7 +32,7 @@ broadcasting AV streams simple.
   $streamer->dump_format;
 
   # create output format context, describing the output container
-  # see L<Video::FFmpeg::Streamer::FormatContext> for options
+  # see L<AV::Streamer::FormatContext> for options
   my $output1 = $streamer->add_output(
       uri => 'tcp://localhost:6666',
       format => 'flv',
@@ -43,7 +43,7 @@ broadcasting AV streams simple.
   $output1->set_metadata('streamName', 'stream1');
 
   # add encoders for output stream
-  # see L<Video::FFmpeg::Streamer::CodecContext> for options
+  # see L<AV::Streamer::CodecContext> for options
   $output1->add_audio_stream({
       codec_name  => 'libfaac',
       sample_rate => 44_100,
@@ -64,7 +64,7 @@ broadcasting AV streams simple.
   
 =head1 DESCRIPTION
 
-This module is based heavily on code from Max Vohra's Video::FFmpeg
+This module is based heavily on code from Max Vohra's AV
 and Martin Boehm's avcodec sample application. It is not an attempt to
 create anything new or special, but rather to make a simple, moosified
 structure to make manipulating streams easy for people unfamiliar with
@@ -79,7 +79,7 @@ libav or XS.
 
 has 'input_format_context' => (
     is => 'rw',
-    isa => 'Video::FFmpeg::Streamer::FormatContext',
+    isa => 'AV::Streamer::FormatContext',
     clearer => 'clear_input_format_context',
     predicate => 'has_input_format_context',
     handles => [qw/dump_format/],
@@ -157,7 +157,7 @@ sub open_uri {
         return;
     }
 
-    my $fmt_ctx_obj = Video::FFmpeg::Streamer::FormatContext->new(
+    my $fmt_ctx_obj = AV::Streamer::FormatContext->new(
         avformat     => $fmt,
         streamer     => $self,
         uri          => $uri,
@@ -173,7 +173,7 @@ sub add_output {
 
     $opts{streamer} = $self;
 
-    my $output_fmt = Video::FFmpeg::Streamer::FormatContext->new(%opts);
+    my $output_fmt = AV::Streamer::FormatContext->new(%opts);
     push @{$self->output_format_contexts}, $output_fmt;
     return $output_fmt;
 }
@@ -273,7 +273,7 @@ __END__
 
 =over 4
 
-=item L<Video::FFmpeg>
+=item L<AV>
 
 =item L<http://web.me.com/dhoerl/Home/Tech_Blog/Entries/2009/1/22_Revised_avcodec_sample.c.html>
 
