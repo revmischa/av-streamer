@@ -1,6 +1,6 @@
 package AV::Streamer::Stream;
 
-use Moose;
+use Mouse;
 use namespace::autoclean;
 use AV::Streamer;
 

@@ -1,6 +1,6 @@
 package AV::Streamer::FormatContext;
 
-use Moose;
+use Mouse;
 use namespace::autoclean;
 use AV::Streamer;
 use AV::Streamer::Stream;

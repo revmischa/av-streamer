@@ -2,7 +2,7 @@ package AV::Streamer;
 
 use 5.006000;
 
-use Moose;
+use Mouse;
 use namespace::autoclean;
 
 use AV::Streamer::FormatContext;
@@ -20,7 +20,7 @@ broadcasting AV streams simple.
 
 =head1 SYNOPSIS
 
-  use Moose;
+  use Mouse;
   use AV::Streamer;
   my $streamer = AV::Streamer->new;
 

@@ -1,6 +1,6 @@
 package AV::FrameDecoder::CodecContext;
 
-use Moose;
+use Mouse;
 use namespace::autoclean;
 use AV::FrameDecoder;
 

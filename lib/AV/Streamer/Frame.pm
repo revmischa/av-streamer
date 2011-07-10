@@ -2,7 +2,7 @@
 # (this is unused currently, right now we only deal in raw AVFrames. instantiating a new Frame each frame seems like a lot of overhead)
 package AV::Streamer::Frame;
 
-use Moose;
+use Mouse;
 use namespace::autoclean;
 use AV::Streamer;
 

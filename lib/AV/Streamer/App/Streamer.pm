@@ -1,7 +1,7 @@
 package AV::Streamer::App::Streamer;
 
-use Moose;
-    with 'MooseX::Getopt';
+use Mouse;
+    with 'MouseX::Getopt';
     
 use namespace::autoclean;
 use Carp qw/croak/;
@@ -20,7 +20,7 @@ has 'input_uri' => (
     required => 1,
     cmd_flag => 'input_uri',
     cmd_aliases => 'i',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_uri' => (
@@ -28,7 +28,7 @@ has 'output_uri' => (
     isa => 'Str',
     cmd_flag => 'output_uri',
     cmd_aliases => 'o',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_format' => (
@@ -36,7 +36,7 @@ has 'output_format' => (
     isa => 'Str',
     cmd_flag => 'output_format',
     cmd_aliases => 'f',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_video_codec' => (
@@ -44,7 +44,7 @@ has 'output_video_codec' => (
     isa => 'Str',
     cmd_flag => 'output_vcodec',
     cmd_aliases => 'vcodec',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_audio_codec' => (
@@ -52,7 +52,7 @@ has 'output_audio_codec' => (
     isa => 'Str',
     cmd_flag => 'output_acodec',
     cmd_aliases => 'acodec',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'real_time' => (
@@ -60,7 +60,7 @@ has 'real_time' => (
     isa => 'Bool',
     cmd_flag => 'realtime',
     cmd_aliases => 'r',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'debug' => (
@@ -68,7 +68,7 @@ has 'debug' => (
     isa => 'Bool',
     cmd_flag => 'debug',
     cmd_aliases => 'd',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 sub stream {

@@ -1,6 +1,6 @@
 package AV::FrameDecoder::FrameHandler;
 
-use Moose::Role;
+use Mouse::Role;
     
 use AV::FrameDecoder;
 
@@ -11,7 +11,7 @@ has 'frame_count' => (
     default => 0,
     cmd_flag => 'framecount',
     cmd_aliases => 'c',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 # input file name or stream URI
@@ -21,7 +21,7 @@ has 'stream_uri' => (
     required => 1,
     cmd_flag => 'input',
     cmd_aliases => 'i',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_file_name' => (
@@ -30,7 +30,7 @@ has 'output_file_name' => (
     required => 1,
     cmd_flag => 'output',
     cmd_aliases => 'o',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'dest_bitrate' => (
@@ -38,7 +38,7 @@ has 'dest_bitrate' => (
     isa => 'Int',
     cmd_flag => 'bitrate',
     cmd_aliases => 'b',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 has 'output_format' => (
@@ -46,7 +46,7 @@ has 'output_format' => (
     isa => 'Str',
     cmd_flag => 'format',
     cmd_aliases => 'f',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 # verbose output, print errors
@@ -55,7 +55,7 @@ has 'debug' => (
     isa => 'Bool',
     default => 0,
     cmd_aliases => 'd',
-    metaclass => 'MooseX::Getopt::Meta::Attribute',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
 # pixel format of destination
