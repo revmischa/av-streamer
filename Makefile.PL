@@ -7,6 +7,8 @@ use lib 'inc';
 use ExtUtils::MakeMaker;
 use ExtUtils::PkgConfig;
 
+# You will need libavformat-dev, libavcodec-dev and pkg-config
+
 my $lavf_lib = ExtUtils::PkgConfig->libs("libavformat");
 my $lavf_inc = ExtUtils::PkgConfig->cflags("libavformat");
 die("Installed libavformat version is too low. I require 52.16 or greater")

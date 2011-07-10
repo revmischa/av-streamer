@@ -6,6 +6,7 @@ Module to make transcoding, saving and broadcasting AV streams simple.
 This module requires libav development libraries, preferably >= 0.6
 (available from http://libav.org/download.html)
 
+Debian: aptitude install libavformat-dev libavcodec-dev pkg-config
 
 INSTALLATION
 
@@ -81,6 +82,13 @@ get AVCodecContexts for each stream.
 
 This module attempts to simplify this process. See
 Video::FFmpeg::Streamer POD docs for details on usage.
+
+
+NAMING
+
+libav* were part of the FFmpeg project. Now there is a fork of the
+project called libav. This module really wraps libav, not FFmpeg. I
+hope nobody is confused by this.
 
 
 ACKNOWLEDGEMENTS

@@ -13,18 +13,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#pragma mark types
-typedef enum CodecID    CodecID;
-typedef uint8_t         FFS_FrameBuffer;
-typedef double          FFS_PTS;
-typedef short bool_t;
+#include "StreamerUtils.h"
 
 #define FFS_DEFAULT_PIXFMT PIX_FMT_YUV420P
 static float mux_preload   = 0.5;
 static float mux_max_delay = 0.7;
 
 #pragma mark globals
-pthread_mutex_t AVFormatCtxMP;
+static pthread_mutex_t AVFormatCtxMP;
 
 MODULE = Video::FFmpeg::Streamer		PACKAGE = Video::FFmpeg::Streamer
 PROTOTYPES: ENABLE
@@ -640,7 +636,7 @@ char* uri;
         ctx->pb = NULL;
         /* open output file for writing (if applicable) */
         if (! (ofmt->flags & AVFMT_NOFILE)) {
-            if (url_fopen(&ctx->pb, uri, URL_WRONLY) < 0) {
+            if (avio_open(&ctx->pb, uri, AVIO_FLAG_WRITE) < 0) {
                 fprintf(stderr, "Could not open '%s' for writing\n", uri);
                 XSRETURN_UNDEF;
             }
@@ -665,7 +661,7 @@ AVFormatContext* ctx;
     {
         /* close file if open */
         if (! (ctx->oformat->flags & AVFMT_NOFILE)) {
-            url_fclose(ctx->pb);
+            avio_close(ctx->pb);
         }
     }
 
@@ -880,7 +876,7 @@ int pixfmt;
             XSRETURN_UNDEF;
         }
 
-        dump_format(ofmt, 0, "output", 1);
+        av_dump_format(ofmt, 0, "output", 1);
 
         RETVAL = 1;
     }
@@ -975,7 +971,7 @@ unsigned int bit_rate;
             return;
         }
 
-        dump_format(ctx, 0, "output", 1);
+        av_dump_format(ctx, 0, "output", 1);
             
         if (avcodec_open(c, codec) < 0) {
             fprintf(stderr, "failed to open codec");
@@ -983,187 +979,6 @@ unsigned int bit_rate;
         }
 
         RETVAL = as;
-    }
-    OUTPUT: RETVAL
-
-
-int
-ffs_write_frame_to_output_video_stream(format_ctx, src_codec_ctx, stream, frame)
-AVFormatContext* format_ctx;
-AVCodecContext*  src_codec_ctx;
-AVStream*    stream;
-AVFrame*     frame;
-    CODE:
-    {
-        /* this function is deprecated */    
-
-        unsigned int out_size;
-        char *video_outbuf;
-        unsigned int video_outbuf_size;
-        AVPacket pkt;
-        AVCodecContext *dest_codec_ctx;
-        
-        dest_codec_ctx = stream->codec;
-
-        /* buffer size taken from ffmpeg sample output program.
-           not sure about this. to speed things up we should save the output 
-           buffer rather than reallocating it each frame. */
-        video_outbuf_size = 200000;
-        video_outbuf = av_mallocz(video_outbuf_size);
-        
-        RETVAL = 0;
-        
-        out_size = avcodec_encode_video(dest_codec_ctx, video_outbuf, video_outbuf_size, frame);
-        
-        /* if zero size, it means the image was buffered */
-        if (out_size > 0) {
-            av_init_packet(&pkt);
-
-            /* no idea what this is! */
-            if (dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
-                pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
-                dest_codec_ctx->time_base, stream->time_base);
-            }
-
-            if (dest_codec_ctx->coded_frame->key_frame)
-                pkt.flags |= AV_PKT_FLAG_KEY;
-
-            pkt.stream_index = stream->index;
-            pkt.data = video_outbuf;
-            pkt.size = out_size;
-            
-            /* write the compressed frame in the media file */
-            RETVAL = av_interleaved_write_frame(format_ctx, &pkt);
-        } else {
-            RETVAL = 1;
-        }
-
-        av_free(video_outbuf);
-    }
-    OUTPUT: RETVAL
-
-int
-ffs_write_frame_to_output_audio_stream(format_ctx, src_codec_ctx, stream, frame)
-AVFormatContext* format_ctx;
-AVCodecContext*  src_codec_ctx;
-AVStream*    stream;
-AVFrame*     frame;
-    CODE:
-    {
-        /* this function is deprecated */    
-
-        unsigned int out_size;
-        char *audio_outbuf;
-        unsigned int audio_outbuf_size;
-        AVPacket pkt;
-        AVCodecContext *dest_codec_ctx;
-        
-        dest_codec_ctx = stream->codec;
-
-        audio_outbuf_size = 200000;
-        audio_outbuf = av_mallocz(audio_outbuf_size);
-        
-        RETVAL = 0;
-        
-        out_size = avcodec_encode_audio(dest_codec_ctx, audio_outbuf, audio_outbuf_size, frame);
-        
-        /* if zero size, it means the image was buffered */
-        if (out_size > 0) {
-            av_init_packet(&pkt);
-
-            /* no idea what this is! */
-            if (dest_codec_ctx->coded_frame && dest_codec_ctx->coded_frame->pts != AV_NOPTS_VALUE) {
-                pkt.pts = av_rescale_q(dest_codec_ctx->coded_frame->pts, 
-                                       dest_codec_ctx->time_base, stream->time_base);
-            }
-
-            pkt.stream_index = stream->index;
-            pkt.data = audio_outbuf;
-            pkt.size = out_size;
-            
-            /* write the compressed frame in the media file */
-            RETVAL = av_interleaved_write_frame(format_ctx, &pkt);
-        } else {
-            RETVAL = 1;
-        }
-
-        av_free(audio_outbuf);
-    }
-    OUTPUT: RETVAL
-
-bool_t
-ffs_decode_frames(format_ctx, codec_ctx, stream_index, dest_pixfmt, src_frame, dst_frame, dst_frame_buffer, frame_count, decoded_cb)
-AVFormatContext* format_ctx;
-AVCodecContext* codec_ctx;
-unsigned int stream_index;
-int dest_pixfmt;
-AVFrame* src_frame;
-AVFrame* dst_frame;
-FFS_FrameBuffer* dst_frame_buffer;
-unsigned int frame_count;
-CV* decoded_cb;
-    CODE:
-    {
-        /* this function is deprecated */
-
-        AVPacket packet;
-        unsigned int frameFinished, w, h;
-        unsigned int frame = 0;
-        struct SwsContext *img_convert_ctx = NULL;
-        
-        while( av_read_frame(format_ctx, &packet) >= 0 ) {
-            if (packet.stream_index != stream_index)
-                continue;
-            
-            avcodec_decode_video(codec_ctx, src_frame, &frameFinished, 
-                packet.data, packet.size);
-
-            if (! frameFinished) 
-                continue;
-                
-            if (img_convert_ctx == NULL) {
-                w = codec_ctx->width;
-                h = codec_ctx->height;
-                
-                /* create context to convert to dest pixformat */
-                img_convert_ctx = sws_getContext(w, h, 
-                				codec_ctx->pix_fmt, 
-                				w, h, dest_pixfmt, SWS_BICUBIC,
-                				NULL, NULL, NULL);
-
-                if (img_convert_ctx == NULL) {
-                    RETVAL = 0;
-                	fprintf(stderr, "Cannot initialize the conversion context!\n");
-                	av_free_packet(&packet);
-                    return;
-                }
-			}
-			
-            sws_scale(img_convert_ctx, src_frame->data, src_frame->linesize, 0, 
-                codec_ctx->height, dst_frame->data, dst_frame->linesize);
-                
-            /* we now have a decoded frame */
-            frame++;
-            if (frame_count && frame > frame_count)
-                break;
-            
-            /* call perl CV callback */
-        	dSP;
-        	ENTER;
-        	SAVETMPS;
-        	PUSHMARK(SP);
-        	XPUSHs( sv_2mortal( newSVuv( frame )));
-        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->width )));
-        	XPUSHs( sv_2mortal( newSVuv( codec_ctx->height )));
-        	PUTBACK;
-
-        	call_sv( decoded_cb, G_DISCARD );
-	
-        	FREETMPS;
-        	LEAVE;
-        }
-        
-        av_free_packet(&packet);
     }
     OUTPUT: RETVAL
 
@@ -1183,7 +998,7 @@ char* title;
     CODE:
     {
         /* dumps information about the context to stderr */
-        dump_format(ctx, 0, title, false);
+        av_dump_format(ctx, 0, title, false);
     }
 
 void
@@ -1201,3 +1016,24 @@ AVFormatContext* ctx;
     {
         av_free(ctx);
     }
+
+
+
+
+ # borrowed from libav cmdutils
+
+void
+ffs_destroy_pts_correction_context(ctx)
+AVFormatContext* ctx;
+    CODE:
+    {
+        av_free(ctx);
+    }
+
+PtsCorrectionContext*
+ffs_alloc_and_init_pts_correction_context()
+    CODE:
+        PtsCorrectionContext *pcc = av_mallocz(sizeof(PtsCorrectionContext));
+        init_pts_correction(pcc);
+        RETVAL = pcc;
+    OUTPUT: RETVAL
