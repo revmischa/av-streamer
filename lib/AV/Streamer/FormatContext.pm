@@ -99,6 +99,12 @@ has 'avpacket' => (
     predicate => 'avpacket_exists',
 );
 
+has 'header_written' => (
+    is => 'rw',
+    isa => 'Bool',
+    default => 0,
+);
+
 # used to keep track of global PTS value when decoding
 has 'global_pts' => (
     is => 'rw',
@@ -147,6 +153,7 @@ sub build_avformat_ctx {
     }
 
     $self->output_opened(0);
+    $self->header_written(0);
 
     # attempt to open output
     my $fmt = AV::Streamer::avs_create_output_format_ctx($ofmt->ofmt, $uri);
@@ -181,6 +188,9 @@ Add metadata to output container. Pass $value=undef to remove an item.
 =cut
 sub set_metadata {
     my ($self, $key, $value) = @_;
+
+    croak "You cannot set stream metadata after the header has been written"
+        if $self->header_written;
     
     AV::Streamer::avs_set_ctx_metadata($self->avformat, $key, $value);
 }
@@ -392,7 +402,9 @@ sub stream_count {
 sub write_header {
     my ($self) = @_;
 
-    return AV::Streamer::avs_write_header($self->avformat);
+    my $ret = AV::Streamer::avs_write_header_and_metadata($self->avformat);
+    $self->metadata_written(1);
+    return $ret;
 }
 
 sub write_trailer {
