@@ -63,6 +63,14 @@ has 'real_time' => (
     metaclass => 'MouseX::Getopt::Meta::Attribute',
 );
 
+has 'bit_rate' => (
+    is => 'rw',
+    isa => 'Int',
+    cmd_flag => 'bitrate',
+    cmd_aliases => 'b',
+    metaclass => 'MouseX::Getopt::Meta::Attribute',
+);
+
 has 'debug' => (
     is => 'rw',
     isa => 'Bool',
@@ -90,6 +98,7 @@ sub stream {
         'uri' => $self->output_uri,
         'format' => $self->output_format,
         'real_time' => $self->real_time,
+        'bit_rate' => $self->bit_rate,
     );
 
     # create audio and video output streams
@@ -109,6 +118,8 @@ sub stream {
         }
     }
 
+
+    
     unless ($self->output_audio_codec && lc $self->output_audio_codec eq 'none') {
         my $aistream = $streamer->input_format_context->get_first_audio_stream;
         if ($aistream) {

@@ -37,6 +37,7 @@ broadcasting AV streams simple.
       uri => 'tcp://localhost:6666',
       format => 'flv',
       real_time => 0,
+      bit_rate => 100_000,  # 100Kb/s
   );
 
   # add some stream metadata (in this case setting streamName for FLV)
@@ -61,7 +62,7 @@ broadcasting AV streams simple.
   # streams closed automatically when object is destroyed
   # (can also call $streamer->close)
   undef $streamer;
-  
+
 =head1 DESCRIPTION
 
 This module is based heavily on code from Max Vohra's AV
@@ -69,6 +70,7 @@ and Martin Boehm's avcodec sample application. It is not an attempt to
 create anything new or special, but rather to make a simple, moosified
 structure to make manipulating streams easy for people unfamiliar with
 libav or XS.
+See included AV::Streamer::App::Stream for more usage examples.
 
 =head2 OPTIONS
 
@@ -166,6 +168,10 @@ sub open_uri {
     
     $self->input_format_context($fmt_ctx_obj);
 
+    if ($self->debugging_enabled) {
+        $fmt_ctx_obj->dump_info;
+    }
+    
     return $fmt_ctx_obj;
 }
 

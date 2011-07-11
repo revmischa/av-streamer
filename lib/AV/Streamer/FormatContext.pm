@@ -100,11 +100,9 @@ has 'header_written' => (
     default => 0,
 );
 
-# used to keep track of global PTS value when decoding
-has 'global_pts' => (
+has 'bit_rate' => (
     is => 'rw',
     isa => 'Num',
-    default => sub { AV::Streamer::avs_no_pts_value() },
 );
 
 =back
@@ -156,12 +154,12 @@ sub build_avformat_ctx {
 }
 
 
-=item dump_format
+=item dump_info
 
 Dump debugging info about this format context to stderr
 
 =cut
-sub dump_format {
+sub dump_info {
     my ($self) = @_;
 
     AV::Streamer::avs_dump_format($self->avformat, $self->uri);
@@ -249,10 +247,14 @@ sub add_stream {
     my $output_stream;
 
     $opts->{format_ctx}   = $self;
-    $opts->{bit_rate}   ||= $input_stream->bit_rate;
-
+    $opts->{bit_rate}   ||= $self->bit_rate || $input_stream->bit_rate;
+    
     if ($opts->{codec_name} && lc $opts->{codec_name} eq 'copy') {
         $opts->{stream_copy} = 1;
+    }
+
+    if (! $opts->{bit_rate} && ! $opts->{stream_copy}) {
+        croak "Bitrate is unknown for input, you must specify a bitrate if transcoding";
     }
 
     $opts->{codec_name} ||= $input_stream->codec_name;
@@ -265,10 +267,10 @@ sub add_stream {
 
         # prepare output stream
         if ($input_stream->is_video_stream) {
-            @stream_params = qw/width height gop_size base_num base_den pixel_format/;
+            @stream_params = qw/width height gop_size base_num base_den pixel_format bit_rate/;
             $stream_class = 'AV::Streamer::Stream::Video';
         } elsif ($input_stream->is_audio_stream) {
-            @stream_params = qw/channels sample_rate/;
+            @stream_params = qw/channels sample_rate bit_rate/;
             $stream_class = 'AV::Streamer::Stream::Audio';
         } else {
             warn "Unknown stream type for index $index";
