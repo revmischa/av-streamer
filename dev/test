@@ -1,0 +1,1 @@
+./run -i dev/sample_mpeg4.mp4 -o dev/out.mkv --vcodec libvpx --acodec none -b 100000

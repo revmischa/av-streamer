@@ -211,34 +211,19 @@ sub frame_delay {
     return AV::Streamer::avs_get_codec_ctx_frame_delay($self->avcodec_ctx);
 }
 
-# write packet $ipkt, encoding video if necessary
+# write packet $ipkt, transcoding if necessary
 # TODO: move decoding into a separate function, so we only
 # need to decode once if we have multiple outputs
 sub write_packet {
-    my ($self, $ipkt, $istream) = @_;
+    my ($self, $ipkt, $istream, $decoded) = @_;
 
     my $oavformat = $self->format_ctx->avformat;
     my $oavpkt = AV::Streamer::avs_alloc_avpacket();
-    my $oavframe = AV::Streamer::avs_alloc_avframe();
-
+    
     my $ret;
 
     if ($self->needs_encoding) {
-        # TRANSCODING: decode input packet into avframe structure,
-        # then encode avframe as output packet
-
-        # decode $ipkt into $oavframe
-        my $status = $self->decode_packet($istream, $ipkt->avpacket, $oavframe);
-
-        if ($status && $status > 0 && $oavframe) {
-            # encode $oavframe into $oavpkt
-            $ret = $self->encode_frame($istream, $ipkt, $oavframe, $self, $oavpkt);
-
-            if ($ret > 0) {
-                # write packet to output
-                $ret = AV::Streamer::avs_write_frame($oavformat, $oavpkt);
-            }
-        }
+        $ret = $self->encode_output($ipkt, $istream, $decoded, $oavpkt);
     } else {
         # copy input packet to output packet, updating pts/dts
         AV::Streamer::avs_raw_stream_packet($ipkt->avpacket, $oavpkt, $istream->avstream, $self->avstream);
@@ -246,18 +231,11 @@ sub write_packet {
         # write packet to output
         $ret = AV::Streamer::avs_write_frame($oavformat, $oavpkt);
     }
-    
+
     AV::Streamer::avs_free_avpacket_data($oavpkt);
     AV::Streamer::avs_dealloc_avpacket($oavpkt);
-    AV::Streamer::avs_dealloc_avframe($oavframe);
 
     return $ret && $ret > -1;
-}
-
-sub decode_packet {
-    my ($self, $pkt) = @_;
-
-    
 }
 
 =head2 METHODS

@@ -239,10 +239,31 @@ sub stream_frame {
     }
 
     foreach my $output_ctx (@{ $self->output_format_contexts }) {
+        # get output streams associated with this input stream
         my $output_streams = $output_ctx->streams->[$stream_index];
         next unless $output_streams;
 
-        $_->write_packet($pkt, $input_stream) foreach @$output_streams;
+        # if we are transcoding, we need to decode the packet here so
+        # that we don't decode for each output stream.
+        # are any output streams transcoding?
+        my $need_transcode = grep { $_->needs_encoding } @$output_streams;
+
+        my ($status, $decoded);
+        if ($need_transcode) {
+            # decode input
+            ($status, $decoded) = $input_stream->decode_packet($input_stream, $pkt->avpacket);
+
+            # not enough input to decode a frame
+            next unless $status;
+
+            # error
+            if ($status < 0) {
+                warn "Failed to decode frame";
+                last;
+            }
+        }
+        
+        $_->write_packet($pkt, $input_stream, $decoded) foreach @$output_streams;
     }
 
     return 1;

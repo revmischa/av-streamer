@@ -40,18 +40,25 @@ has 'pixel_format' => (
 #    default => 'PIX_FMT_YUV420P',
 );
 
-# current PTS for syncronization
-has 'next_pts' => (
-    is => 'rw',
-    isa => 'Num',
-);
+# encodes iframe and writes it out
+sub encode_output {
+    my ($self, $ipkt, $istream, $iframe, $oavpkt) = @_;
+
+    my $status = $self->encode_frame($istream, $ipkt, $iframe, $self, $oavpkt);
+    return unless $status;
+    
+    return AV::Streamer::avs_write_frame($self->format_ctx->avformat, $oavpkt);
+}
 
 # decode $iavpkt into $oavframe
-# returns < 0 on error
-# returns undef if no error but frame not decoded (not enough data read to decode a frame yet)
+# returns ($status, $oavframe)
+# caller is responsible for calling $istream->free_decoded($oavframe) when done with it
+# status < 0 on error
+# status == undef if no error but frame not decoded (not enough data read to decode a frame yet)
 sub decode_packet {
-    my ($self, $istream, $iavpkt, $oavframe) = @_;
+    my ($self, $istream, $iavpkt) = @_;
 
+    my $oavframe = AV::Streamer::avs_alloc_avframe();
     my $fmt = $self->format_ctx->avformat;
 
     # read $iavpkt, if able to decode then it is stored in $oavframe
@@ -63,17 +70,19 @@ sub decode_packet {
         warn "got ref! $res";
     }
 
+    # failed to decode
     if ($res && $res < 0) {
-        # failure... what to do?
-        warn "failed to decode frame";
-        return 
+        AV::Streamer::avs_dealloc_avframe($oavframe);
+        return ($res);
     }
 
-    if ($res) {
-        # frame was decoded
+    # didn't get a frame
+    unless ($res) {
+        AV::Streamer::avs_dealloc_avframe($oavframe);
+        return ($res);
     }
 
-    return $res;
+    return ($res, $oavframe);
 }
 
 # encode $iavframe into $oavpkt
