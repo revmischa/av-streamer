@@ -262,8 +262,12 @@ sub stream_frame {
                 last;
             }
         }
-        
+
+        # do frame output, encoding our decoded frame if necessary
         $_->write_packet($pkt, $input_stream, $decoded) foreach @$output_streams;
+
+        # done with decoded frame
+        $input_stream->free_decoded($decoded) if $need_transcode && $decoded;
     }
 
     return 1;

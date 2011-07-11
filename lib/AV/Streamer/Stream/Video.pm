@@ -40,6 +40,15 @@ has 'pixel_format' => (
 #    default => 'PIX_FMT_YUV420P',
 );
 
+# free avframe
+sub free_decoded {
+    my ($self, $avframe) = @_;
+
+    return unless $avframe;
+
+    AV::Streamer::avs_dealloc_avframe($avframe);    
+}
+
 # encodes iframe and writes it out
 sub encode_output {
     my ($self, $ipkt, $istream, $iframe, $oavpkt) = @_;
