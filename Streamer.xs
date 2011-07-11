@@ -34,12 +34,11 @@ BOOT:
 
 #pragma mark methods
 
+# avs_open_uri: wrapper around av_open_input_file
 AVFormatContext*
 avs_open_uri(char *uri)
     CODE:
     {
-        /* avs_open_uri: wrapper around av_open_input_file */
-
         int lock_status;
 
         /* use a mutex protect opening a file. I assume this is
@@ -74,33 +73,28 @@ avs_open_uri(char *uri)
     OUTPUT: RETVAL
 
 CodecID
-avs_get_stream_codec_id(stream)
-AVStream *stream;
+avs_get_stream_codec_id(AVStream *stream)
     CODE:
         RETVAL = stream->codec->codec_id;
     OUTPUT: RETVAL
 
 int
-avs_get_stream_base_den(s)
-AVStream *s;
+avs_get_stream_base_den(AVStream *s)
     CODE:
         RETVAL = s->time_base.den;
     OUTPUT: RETVAL
 
 int
-avs_get_stream_base_num(s)
-AVStream *s;
+avs_get_stream_base_num(AVStream *s)
     CODE:
         RETVAL = s->time_base.num;
     OUTPUT: RETVAL
 
+# find decoder by id
 int
-avs_open_decoder(codec_ctx, codec_id)
-AVCodecContext *codec_ctx;
-CodecID codec_id;
+avs_open_decoder(AVCodecContext *codec_ctx, CodecID codec_id)
     CODE:
     {
-        /* find decoder by id */
         AVCodec *codec = avcodec_find_decoder(codec_id);
         if (! codec) {
             fprintf(stderr, "Failed to find codec id=%d\n", codec_id);
@@ -117,66 +111,52 @@ CodecID codec_id;
     OUTPUT: RETVAL
 
 void
-avs_close_codec(codec_ctx)
-AVCodecContext *codec_ctx;
+avs_close_codec(AVCodecContext *codec_ctx)
     CODE:
-    {
         avcodec_close(codec_ctx);
-    }
 
 unsigned int
-avs_stream_count(fmt)
-AVFormatContext* fmt;
+avs_stream_count(AVFormatContext *fmt)
     CODE:
         RETVAL = fmt->nb_streams;
     OUTPUT: RETVAL
 
 unsigned short
-avs_is_video_stream_index(fmt, index)
-AVFormatContext* fmt;
-unsigned int index;
+avs_is_video_stream_index(AVFormatContext *fmt, unsigned int index)
     CODE:
         RETVAL = fmt->streams[index]->codec->codec_type == AVMEDIA_TYPE_VIDEO;
     OUTPUT: RETVAL
 
 unsigned short
-avs_is_audio_stream_index(fmt, index)
-AVFormatContext* fmt;
-unsigned int index;
+avs_is_audio_stream_index(AVFormatContext *fmt, unsigned int index)
     CODE:
         RETVAL = fmt->streams[index]->codec->codec_type == AVMEDIA_TYPE_AUDIO;
     OUTPUT: RETVAL
 
 unsigned short
-avs_is_video_stream(stream)
-AVStream* stream;
+avs_is_video_stream(AVStream *stream)
     CODE:
         RETVAL = stream->codec->codec_type == AVMEDIA_TYPE_VIDEO;
     OUTPUT: RETVAL
 
 unsigned short
-avs_is_audio_stream(stream)
-AVStream* stream;
+avs_is_audio_stream(AVStream *stream)
     CODE:
         RETVAL = stream->codec->codec_type == AVMEDIA_TYPE_AUDIO;
     OUTPUT: RETVAL
 
-
 unsigned int
-avs_get_stream_index(stream)
-AVStream* stream;
+avs_get_stream_index(AVStream *stream)
     CODE:
         RETVAL = stream->index;
     OUTPUT: RETVAL
 
+# get a stream from a format context by index.
+# returns a pointer to the stream context or NULL
 AVStream*
-avs_get_stream(ctx, idx)
-AVFormatContext* ctx;
-int idx;
+avs_get_stream(AVFormatContext *ctx, unsigned int idx)
     CODE:
     {
-        /* get a stream from a format context by index.
-        returns a pointer to the stream context or NULL */
         
         AVStream *stream = ctx->streams[idx];
         if (! stream) XSRETURN_UNDEF;
@@ -185,38 +165,27 @@ int idx;
     }
     OUTPUT: RETVAL
 
+# allocate space for an AVFrame struct
 AVFrame*
 avs_alloc_avframe()
     CODE:
-    {
-        /* allocate space for an AVFrame struct */
         RETVAL = avcodec_alloc_frame();
-    }
     OUTPUT: RETVAL
 
+# deallocate frame storage
 void
-avs_dealloc_avframe(frame)
-AVFrame* frame;
+avs_dealloc_avframe(AVFrame *frame)
     CODE:
-    {
-        /* dellocate frame storage */
         av_free(frame);
-    }
     
+# dellocate frame buffer storage
 void
-avs_dealloc_output_buffer(buf)
-AVSFrameBuffer* buf;
+avs_dealloc_output_buffer(AVSFrameBuffer *buf)
     CODE:
-    {
-        /* dellocate frame buffer storage */
         free(buf);
-    }
 
 AVSFrameBuffer*
-avs_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
-AVCodecContext* codec_ctx;
-AVFrame* dst_frame;
-int pixformat;
+avs_alloc_frame_buffer(AVCodecContext *codec_ctx, AVFrame *dst_frame, int pixformat)
     CODE:
     {
         unsigned int size;
@@ -238,8 +207,7 @@ int pixformat;
     OUTPUT: RETVAL
 
 AVCodecContext*
-avs_get_codec_ctx(stream)
-AVStream* stream;
+avs_get_codec_ctx(AVStream *stream)
     CODE:
         RETVAL = stream->codec;
     OUTPUT: RETVAL
@@ -251,51 +219,45 @@ avs_alloc_avpacket()
     OUTPUT: RETVAL
 
 int
-avs_get_avpacket_stream_index(pkt)
-AVPacket *pkt;
+avs_get_avpacket_stream_index(AVPacket *pkt)
     CODE:
         RETVAL = pkt->stream_index;
     OUTPUT: RETVAL
 
 AVSPTS
 avs_no_pts_value()
-    CODE: { RETVAL = AV_NOPTS_VALUE; }
+    CODE:
+        RETVAL = AV_NOPTS_VALUE;
     OUTPUT: RETVAL
 
 AVSPTS
-avs_get_avpacket_dts(pkt)
-AVPacket *pkt;
+avs_get_avpacket_dts(AVPacket *pkt)
     CODE:
         RETVAL = pkt->dts;
     OUTPUT: RETVAL
 
 AVSPTS
-avs_get_avpacket_pts(pkt)
-AVPacket *pkt;
+avs_get_avpacket_pts(AVPacket *pkt)
     CODE:
         RETVAL = pkt->pts;
     OUTPUT: RETVAL
 
 AVSPTS
-avs_get_avframe_pkt_dts(frame)
-AVFrame *frame;
+avs_get_avframe_pkt_dts(AVFrame *frame)
     CODE:
         RETVAL = frame->pkt_dts;
     OUTPUT: RETVAL
 
 AVSPTS
-avs_get_avframe_pts(frame)
-AVFrame *frame;
+avs_get_avframe_pts(AVFrame *frame)
     CODE:
         RETVAL = frame->pts;
     OUTPUT: RETVAL
 
 AVSPTS
-avs_guess_correct_pts(ctx, in_pts, dts)
-PtsCorrectionContext *ctx;
-AVSPTS in_pts;
-AVSPTS dts;
-    CODE: { RETVAL = guess_correct_pts(ctx, in_pts, dts); }
+avs_guess_correct_pts(PtsCorrectionContext *ctx, AVSPTS in_pts, AVSPTS dts)
+    CODE:
+        RETVAL = guess_correct_pts(ctx, in_pts, dts);
     OUTPUT: RETVAL
 
 AVSPTS
@@ -306,79 +268,37 @@ avs_scale_pts(AVSPTS pts, AVStream *stream)
          RETVAL = pts;
      }
      OUTPUT: RETVAL
-    
-AVSPTS
-avs_get_avpacket_scaled_pts(pkt, stream, global_pts)
-AVPacket *pkt;
-AVStream *stream;
-AVSPTS global_pts;
-    CODE:
-    {
-        double pts;
-
-        /* if we got a DTS, use it. if not, use global PTS if exists, otherwise 0 */
-        if (pkt->dts == AV_NOPTS_VALUE && global_pts != AV_NOPTS_VALUE)
-            pts = global_pts;
-        else if (pkt->dts != AV_NOPTS_VALUE)
-            pts = pkt->dts;
-        else
-            pts = 0;
-
-        pts *= av_q2d(stream->time_base);
-
-        RETVAL = pts;
-    }
-    OUTPUT: RETVAL
 
 void
-avs_dealloc_avpacket(pkt)
-AVPacket* pkt;
+avs_dealloc_avpacket(AVPacket *pkt)
     CODE:
-    {
-      av_free(pkt);
-    }
+        av_free(pkt);
 
 void
-avs_free_avpacket_data(pkt)
-AVPacket* pkt;
+avs_free_avpacket_data(AVPacket *pkt)
     CODE:
-       av_free_packet(pkt);
+        av_free_packet(pkt);
 
+# read one frame packet, wants allocated pkt for storage. call
+# avs_free_avpacket when done with the pkt
 int
-avs_read_frame(ctx, pkt)
-AVFormatContext *ctx;
-AVPacket *pkt;
+avs_read_frame(AVFormatContext *ctx, AVPacket *pkt)
     CODE:
-    {
-        /* read one frame packet, wants allocated pkt for storage. call
-            avs_free_avpacket when done with the pkt */
-
-        /* do we need to init the packet? */
         RETVAL = av_read_frame(ctx, pkt);
-    }
     OUTPUT: RETVAL
 
+# write frame to output. you may need to encode the frame first
 int
-avs_write_frame(ctx, pkt)
-AVFormatContext *ctx;
-AVPacket *pkt;
+avs_write_frame(AVFormatContext *ctx, AVPacket *pkt)
     CODE:
-    {
-        /* write frame to output. you may need to encode the frame first */
         RETVAL = av_interleaved_write_frame(ctx, pkt);
-    }
     OUTPUT: RETVAL
 
+# basically copies input packet into output packet, rescaling time
 void
-avs_raw_stream_packet(ipkt, opkt, ist, ost)
-AVPacket *ipkt;
-AVPacket *opkt;
-AVStream *ist;
-AVStream *ost;
+avs_raw_stream_packet(AVPacket *ipkt, AVPacket *opkt, AVStream *ist, AVStream *ost)
     CODE:
     {
-        /* basically copies input packet into output packet, rescaling time */
-
         /* can use as starting oavset later i think */
         int start_time = 0;
         int64_t ost_tb_start_time = av_rescale_q(start_time, AV_TIME_BASE_Q, ost->time_base);
@@ -389,13 +309,6 @@ AVStream *ost;
         else
             opkt->pts = AV_NOPTS_VALUE;
  
-  /* TODO: where does ist->pts come from ? */
-   /*        if (ipkt->dts == AV_NOPTS_VALUE)
-            opkt->dts = av_rescale_q(ist->pts, AV_TIME_BASE_Q, ost->time_base);
-        else 
-  */
-            opkt->dts = av_rescale_q(ipkt->dts, ist->time_base, ost->time_base);
-            
         opkt->dts -= ost_tb_start_time;
         opkt->duration = av_rescale_q(ipkt->duration, ist->time_base, ost->time_base);
         opkt->flags = ipkt->flags;
@@ -406,15 +319,9 @@ AVStream *ost;
         ost->codec->frame_number++;
     }
 
+# encode iframe into opkt
 int
-avs_encode_video_frame(format_ctx, ostream, iframe, opkt, obuf, obuf_size, pts)
-AVFormatContext* format_ctx;
-AVStream* ostream;
-AVFrame* iframe;
-AVPacket* opkt;
-AVSFrameBuffer* obuf;
-unsigned int obuf_size;
-AVSPTS pts;
+avs_encode_video_frame(AVFormatContext *format_ctx, AVStream *ostream, AVFrame *iframe, AVPacket *opkt, AVSFrameBuffer *obuf, unsigned int obuf_size, AVSPTS pts)
     CODE:
     {
         /* TODO: image resampling with sws_scale() */
@@ -442,13 +349,9 @@ AVSPTS pts;
     }
     OUTPUT: RETVAL
 
+# decode ipkt into oframe
 int
-avs_decode_video_frame(format_ctx, istream, ipkt, pts_ctx, oframe)
-AVFormatContext* format_ctx;
-AVStream* istream;
-AVPacket* ipkt;
-PtsCorrectionContext *pts_ctx;
-AVFrame* oframe;
+avs_decode_video_frame(AVFormatContext *format_ctx, AVStream *istream, AVPacket *ipkt, PtsCorrectionContext *pts_ctx, AVFrame *oframe)
      CODE:
      {
          int status, frame_was_decoded;
@@ -485,123 +388,100 @@ AVFrame* oframe;
      OUTPUT: RETVAL
 
 AVCodec*
-avs_get_codec_ctx_codec(c)
-AVCodecContext* c;
+avs_get_codec_ctx_codec(AVCodecContext *c)
     CODE:
         RETVAL = c->codec;
     OUTPUT: RETVAL
 
 const char*
-avs_get_codec_ctx_codec_name(c)
-AVCodecContext* c;
+avs_get_codec_ctx_codec_name(AVCodecContext *c)
     CODE:
         RETVAL = c->codec->name;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_width(c)
-AVCodecContext* c;
+avs_get_codec_ctx_width(AVCodecContext *c)
     CODE:
         RETVAL = c->width;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_height(c)
-AVCodecContext* c;
+avs_get_codec_ctx_height(AVCodecContext *c)
     CODE:
         RETVAL = c->height;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_bitrate(c)
-AVCodecContext* c;
+avs_get_codec_ctx_bitrate(AVCodecContext *c)
     CODE:
         RETVAL = c->bit_rate;
     OUTPUT: RETVAL
     
 int
-avs_get_codec_ctx_base_den(c)
-AVCodecContext* c;
+avs_get_codec_ctx_base_den(AVCodecContext *c)
     CODE:
         RETVAL = c->time_base.den;
     OUTPUT: RETVAL
 
 int
-avs_get_codec_ctx_base_num(c)
-AVCodecContext* c;
+avs_get_codec_ctx_base_num(AVCodecContext *c)
     CODE:
         RETVAL = c->time_base.num;
     OUTPUT: RETVAL
 
 int
-avs_get_codec_ctx_pixfmt(c)
-AVCodecContext* c;
+avs_get_codec_ctx_pixfmt(AVCodecContext *c)
     CODE:
         RETVAL = c->pix_fmt;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_gopsize(c)
-AVCodecContext* c;
+avs_get_codec_ctx_gopsize(AVCodecContext *c)
     CODE:
         RETVAL = c->gop_size;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_channels(c)
-AVCodecContext* c;
+avs_get_codec_ctx_channels(AVCodecContext *c)
     CODE:
         RETVAL = c->channels;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_sample_rate(c)
-AVCodecContext* c;
+avs_get_codec_ctx_sample_rate(AVCodecContext *c)
     CODE:
         RETVAL = c->sample_rate;
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_codec_ctx_frame_delay(c)
-AVCodecContext* c;
+avs_get_codec_ctx_frame_delay(AVCodecContext *c)
     CODE:
         RETVAL = av_q2d(c->time_base);
     OUTPUT: RETVAL
 
 int
-avs_get_avframe_repeat_pict(f)
-AVFrame* f;
+avs_get_avframe_repeat_pict(AVFrame *f)
     CODE:
         RETVAL = f->repeat_pict;
     OUTPUT: RETVAL
 
 char*
-avs_get_avframe_line_pointer(frame, y)
-AVFrame* frame;
-unsigned int y;
+avs_get_avframe_line_pointer(AVFrame *frame, unsigned int y)
     CODE:
-    {
         RETVAL = frame->data[0] + y * frame->linesize[0];
-    }
     OUTPUT: RETVAL
 
 unsigned int
-avs_get_avframe_size(frame, line_size, height)
-AVFrame* frame;
-unsigned int line_size;
-unsigned int height;
+avs_get_avframe_size(AVFrame *frame, unsigned int line_size, unsigned int height)
     CODE:
     {
         unsigned int frame_size = line_size * height;
-
         RETVAL = frame_size;
     }
     OUTPUT: RETVAL
     
 unsigned int
-avs_get_line_size(frame, width)
-AVFrame* frame;
-unsigned int width;
+avs_get_line_size(AVFrame *frame, unsigned int width)
     CODE:
     {
         unsigned int line_size = frame->linesize[0] + frame->linesize[1] 
@@ -612,12 +492,7 @@ unsigned int width;
     OUTPUT: RETVAL
 
 SV*
-avs_get_avframe_data(frame, width, height, line_size, frame_size)
-AVFrame* frame;
-unsigned int width;
-unsigned int height;
-unsigned int line_size;
-unsigned int frame_size;
+avs_get_avframe_data(AVFrame *frame, unsigned int width, unsigned int height, unsigned int line_size, unsigned int frame_size)
     CODE:
     {
         char *buf, *oavset;
@@ -638,15 +513,13 @@ unsigned int frame_size;
     }
     OUTPUT: RETVAL
 
+# attempt to guess the format from the filename (and format if supplied)
 AVOutputFormat*
-avs_find_output_format(uri, format)
-char* uri;
-char* format;
+avs_find_output_format(char *uri, char *format)
     CODE:
     {
         AVOutputFormat *fmt;
 
-        /* attempt to guess the format from the filename (and format if supplied) */
         fmt = av_guess_format(format, uri, NULL);
         if (! fmt) {
             XSRETURN_UNDEF;
@@ -657,10 +530,7 @@ char* format;
     OUTPUT: RETVAL
 
 AVFormatContext*
-avs_create_output_format_ctx(self, ofmt, uri)
-SV* self;
-AVOutputFormat* ofmt;
-char* uri;
+avs_create_output_format_ctx(AVOutputFormat *ofmt, char *uri)
     PREINIT:
         AVFormatContext *ctx;
     CODE:
@@ -694,8 +564,7 @@ char* uri;
      OUTPUT: RETVAL
 
 void
-avs_close_output_format_ctx(ctx)
-AVFormatContext* ctx;
+avs_close_output_format_ctx(AVFormatContext *ctx)
     CODE:
     {
         /* close file if open */
@@ -705,30 +574,17 @@ AVFormatContext* ctx;
     }
 
 void
-avs_dealloc_stream(stream)
-AVStream* stream;
+avs_dealloc_stream(AVStream *stream)
     CODE:
-    {
-//        if (stream->codec)
-//            av_freep(&stream->codec);
-
         av_freep(&stream);
-    }
 
 void
-avs_set_ctx_metadata(ctx, key, value)
-AVFormatContext* ctx;
-const char* key;
-const char* value;
+avs_set_ctx_metadata(AVFormatContext *ctx, const char *key, const char *value)
     CODE:
-    {
         av_dict_set(&ctx->metadata, key, value, 0);
-    }
-
     
 void
-avs_write_header_and_metadata(ctx)
-AVFormatContext* ctx;
+avs_write_header_and_metadata(AVFormatContext *ctx)
     CODE:
     {
         avformat_write_header(ctx, &ctx->metadata);
@@ -736,16 +592,12 @@ AVFormatContext* ctx;
     }
 
 void
-avs_write_trailer(ctx)
-AVFormatContext* ctx;
+avs_write_trailer(AVFormatContext *ctx)
     CODE:
-    {
         av_write_trailer(ctx);
-    }    
 
 AVStream*
-avs_create_stream(ofmt)
-AVFormatContext *ofmt;
+avs_create_stream(AVFormatContext *ofmt)
     CODE:
     {
         AVStream *vs = NULL;
@@ -761,10 +613,7 @@ AVFormatContext *ofmt;
     OUTPUT: RETVAL
 
 int
-avs_copy_stream_params(ofmt, istream, ostream)
-AVStream *istream;
-AVStream *ostream;
-AVFormatContext *ofmt;
+avs_copy_stream_params(AVFormatContext *ofmt, AVStream *istream, AVStream *ostream)
     CODE:
     {
         AVCodecContext *ocodec, *icodec;
@@ -837,18 +686,7 @@ AVFormatContext *ofmt;
     OUTPUT: RETVAL
 
 int
-avs_set_video_stream_params(ofmt, vs, codec_name, stream_copy, width, height, bitrate, base_num, base_den, gopsize, pixfmt)
-AVFormatContext* ofmt;
-AVStream *vs;
-const char *codec_name;
-unsigned short stream_copy;
-unsigned int width;
-unsigned int height;
-unsigned int bitrate;
-int base_num;
-int base_den;
-unsigned int gopsize;
-int pixfmt;
+avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *codec_name, unsigned short stream_copy, unsigned int width, unsigned int height, unsigned int bitrate, int base_num, int base_den, unsigned int gopsize, int pixfmt)
     CODE:
     {
         int i;
@@ -922,14 +760,7 @@ int pixfmt;
     OUTPUT: RETVAL        
 
 int
-avs_set_audio_stream_params(ofmt, as, codec_name, stream_copy, channels, sample_rate, bit_rate)
-AVFormatContext* ofmt;
-AVStream *as;
-const char *codec_name;
-unsigned short stream_copy;
-unsigned int channels;
-unsigned int sample_rate;
-unsigned int bit_rate;
+avs_set_audio_stream_params(AVFormatContext *ofmt, AVStream *as, const char *codec_name, unsigned short stream_copy, unsigned int channels, unsigned int sample_rate, unsigned int bit_rate)
     CODE:
     {
         if (! codec_name && ofmt->oformat->audio_codec == CODEC_ID_NONE) {
@@ -971,10 +802,7 @@ unsigned int bit_rate;
     OUTPUT: RETVAL
 
 AVStream*
-avs_new_output_audio_stream(ctx, sample_rate, bit_rate)
-AVFormatContext* ctx;
-unsigned int sample_rate;
-unsigned int bit_rate;
+avs_new_output_audio_stream(AVFormatContext *ctx, unsigned int sample_rate, unsigned int bit_rate)
     CODE:
     {
         AVStream *as = NULL;
@@ -1022,65 +850,47 @@ unsigned int bit_rate;
     OUTPUT: RETVAL
 
 void
-avs_close_stream(ctx, stream)
-AVFormatContext* ctx;
-AVStream* stream;
+avs_close_stream(AVFormatContext *ctx, AVStream *stream)
     CODE:
-    {
         avcodec_close(stream->codec);
-    }
 
+# dumps information about the context to stderr
 void
-avs_dump_format(ctx, title)
-AVFormatContext* ctx;
-char* title;
+avs_dump_format(AVFormatContext *ctx, char *title)
     CODE:
-    {
-        /* dumps information about the context to stderr */
         av_dump_format(ctx, 0, title, false);
-    }
 
 void
-avs_close_input_file(ctx)
-AVFormatContext* ctx;
+avs_close_input_file(AVFormatContext *ctx)
     CODE:
-    {
         av_close_input_file(ctx);
-    }
 
 void
-avs_destroy_context(ctx)
-AVFormatContext* ctx;
+avs_destroy_context(AVFormatContext *ctx)
     CODE:
-    {
         av_free(ctx);
-    }
 
 AVSFrameBuffer*
-avs_alloc_output_buffer(size)
-unsigned int size;
+avs_alloc_output_buffer(unsigned int size)
     CODE:
         RETVAL = av_mallocz(size);
-    OUTPUT:
-        RETVAL
+    OUTPUT: RETVAL
 
 
 # borrowed from libav cmdutils
-
 void
-avs_destroy_pts_correction_context(ctx)
-AVFormatContext* ctx;
+avs_destroy_pts_correction_context(AVFormatContext *ctx)
     CODE:
-    {
         av_free(ctx);
-    }
 
 PtsCorrectionContext*
 avs_alloc_and_init_pts_correction_context()
     CODE:
+    {
         PtsCorrectionContext *pcc = av_mallocz(sizeof(PtsCorrectionContext));
         init_pts_correction(pcc);
         RETVAL = pcc;
+    }
     OUTPUT: RETVAL
 
 

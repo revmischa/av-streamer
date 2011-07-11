@@ -37,15 +37,6 @@ sub pts {
     return AV::Streamer::avs_get_avpacket_pts($self->avpacket);
 }
 
-# returns PTS scaled to stream's timebase. uses $global_pts if unable to determine packet's DTS
-# ugh, don't use
-sub scaled_pts {
-    my ($self, $stream, $global_pts) = @_;
-
-    return unless $self->avpacket;
-    return AV::Streamer::avs_get_avpacket_scaled_pts($self->avpacket, $stream->avstream, $global_pts);
-}
-
 sub DEMOLISH {
     my ($self) = @_;
 

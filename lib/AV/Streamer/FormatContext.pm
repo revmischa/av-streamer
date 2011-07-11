@@ -143,7 +143,7 @@ sub build_avformat_ctx {
     $self->header_written(0);
 
     # attempt to open output
-    my $fmt = AV::Streamer::avs_create_output_format_ctx($self, $ofmt->ofmt, $uri);
+    my $fmt = AV::Streamer::avs_create_output_format_ctx($ofmt->ofmt, $uri);
     unless ($fmt) {
         die "Unable to open output $uri\n";
     }
