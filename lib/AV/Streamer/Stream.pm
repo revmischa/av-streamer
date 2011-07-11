@@ -4,7 +4,7 @@ use Mouse;
 use namespace::autoclean;
 use AV::Streamer;
 
-use Carp qw/croak/;
+use Carp qw/cluck croak/;
 
 =head1 NAME
 
@@ -73,26 +73,10 @@ has 'output_buffer_size' => (
 );
 has '_output_buffer' => (
     is => 'rw',
+    isa => 'AV::Streamer::FrameBuffer',
     lazy => 1,
     predicate => 'has_output_buffer',
     builder => 'build_output_buffer',
-);
-
-# keep an avpacket around to speed up writing decoded frames
-has '_output_avpacket' => (
-    is => 'rw',
-    isa => 'AVPacket',
-    lazy => 1,
-    predicate => 'has_output_avpacket',
-    builder => 'build_output_avpacket',
-);
-
-has '_output_avframe' => (
-    is => 'rw',
-    lazy => 1,
-    isa => 'AVFrame',
-    predicate => 'has_output_avframe',
-    builder => 'build_output_avframe',
 );
 
 has 'pts_correction_ctx' => (
@@ -121,18 +105,6 @@ sub build_output_buffer {
     my ($self) = @_;
 
     return AV::Streamer::avs_alloc_output_buffer($self->output_buffer_size);
-}
-
-sub build_output_avpacket {
-    my ($self) = @_;
-
-    return AV::Streamer::avs_alloc_avpacket();
-}
-
-sub build_output_avframe {
-    my ($self) = @_;
-
-    return AV::Streamer::avs_alloc_avframe();
 }
 
 sub create_avstream {
@@ -246,11 +218,8 @@ sub write_packet {
     my ($self, $ipkt, $istream) = @_;
 
     my $oavformat = $self->format_ctx->avformat;
-    my $oavpkt = $self->_output_avpacket;
-    my $oavframe = $self->_output_avframe;
-
-    # is this needed? does decode_packet do this for us?
-    AV::Streamer::avs_init_avpacket($oavpkt);
+    my $oavpkt = AV::Streamer::avs_alloc_avpacket();
+    my $oavframe = AV::Streamer::avs_alloc_avframe();
 
     my $ret;
 
@@ -278,7 +247,9 @@ sub write_packet {
         $ret = AV::Streamer::avs_write_frame($oavformat, $oavpkt);
     }
     
-    AV::Streamer::avs_free_avpacket_data($oavpkt); # right??
+    AV::Streamer::avs_free_avpacket_data($oavpkt);
+    AV::Streamer::avs_dealloc_avpacket($oavpkt);
+    AV::Streamer::avs_dealloc_avframe($oavframe);
 
     return $ret && $ret > -1;
 }
@@ -330,18 +301,12 @@ sub destroy_stream {
 
 sub DEMOLISH {
     my ($self) = @_;
-
-    AV::Streamer::avs_dealloc_avpacket($self->_output_avpacket)
-        if $self->has_output_avpacket;
-
-    AV::Streamer::avs_dealloc_avframe($self->_output_avframe)
-        if $self->has_output_avframe;
-
+    
     AV::Streamer::avs_dealloc_output_buffer($self->_output_buffer)
-        if $self->has_output_buffer;
+        if $self->has_output_buffer && $self->_output_buffer;
 
     AV::Streamer::avs_destroy_pts_correction_context($self->pts_correction_ctx)
-        if $self->pts_correction_ctx_exists;
+        if $self->pts_correction_ctx_exists && $self->pts_correction_ctx;
 
     $self->destroy_stream;
 }

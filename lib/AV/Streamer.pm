@@ -165,6 +165,7 @@ sub open_uri {
     );
     
     $self->input_format_context($fmt_ctx_obj);
+
     return $fmt_ctx_obj;
 }
 
@@ -243,7 +244,7 @@ sub stream_frame {
 
 sub close_input {
     my ($self) = @_;
-    
+
     $self->clear_input_format_context;
 }
 

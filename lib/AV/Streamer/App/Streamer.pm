@@ -131,6 +131,7 @@ sub stream {
     $SIG{INT} = sub { $streamer->finish_streaming };
 
     $streamer->stream;
+    undef $streamer;
 
     print "Streaming finished\n" if $self->debug;
 }

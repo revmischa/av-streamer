@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "StreamerUtils.h"
+#include "Streamer.h"
 
 #define AVS_DEFAULT_PIXFMT PIX_FMT_YUV420P
 static float mux_preload   = 0.5;
@@ -206,23 +206,14 @@ AVFrame* frame;
     
 void
 avs_dealloc_output_buffer(buf)
-AVS_FrameBuffer* buf;
+AV_Streamer_FrameBuffer* buf;
     CODE:
     {
         /* dellocate frame buffer storage */
         free(buf);
     }
 
-
-AVS_FrameBuffer*
-avs_alloc_output_buffer(size)
-unsigned int size;
-    CODE:
-        RETVAL = av_mallocz(size);
-    OUTPUT:
-        RETVAL
-
-AVS_FrameBuffer*
+AV_Streamer_FrameBuffer*
 avs_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
 AVCodecContext* codec_ctx;
 AVFrame* dst_frame;
@@ -230,7 +221,7 @@ int pixformat;
     CODE:
     {
         unsigned int size;
-        AVS_FrameBuffer *buf;
+        AV_Streamer_FrameBuffer *buf;
                 
         /* calculate size of storage required for a frame */
         size = avpicture_get_size(pixformat, codec_ctx->width,
@@ -260,12 +251,6 @@ avs_alloc_avpacket()
         RETVAL = av_mallocz(sizeof(struct AVPacket));
     OUTPUT: RETVAL
 
-void
-avs_init_avpacket(pkt)
-AVPacket *pkt;
-    CODE:
-        av_init_packet(pkt);
-
 int
 avs_get_avpacket_stream_index(pkt)
 AVPacket *pkt;
@@ -273,49 +258,49 @@ AVPacket *pkt;
         RETVAL = pkt->stream_index;
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_no_pts_value()
     CODE: { RETVAL = AV_NOPTS_VALUE; }
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_get_avpacket_dts(pkt)
 AVPacket *pkt;
     CODE:
         RETVAL = pkt->dts;
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_get_avpacket_pts(pkt)
 AVPacket *pkt;
     CODE:
         RETVAL = pkt->pts;
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_get_avframe_pkt_dts(frame)
 AVFrame *frame;
     CODE:
         RETVAL = frame->pkt_dts;
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_get_avframe_pts(frame)
 AVFrame *frame;
     CODE:
         RETVAL = frame->pts;
     OUTPUT: RETVAL
 
-AVS_PTS
+AV_Streamer_PTS
 avs_guess_correct_pts(ctx, in_pts, dts)
 PtsCorrectionContext *ctx;
-AVS_PTS in_pts;
-AVS_PTS dts;
+AV_Streamer_PTS in_pts;
+AV_Streamer_PTS dts;
     CODE: { RETVAL = guess_correct_pts(ctx, in_pts, dts); }
     OUTPUT: RETVAL
 
-AVS_PTS
-avs_scale_pts(AVS_PTS pts, AVStream *stream)
+AV_Streamer_PTS
+avs_scale_pts(AV_Streamer_PTS pts, AVStream *stream)
      CODE:
      {
          pts *= av_q2d(stream->time_base);
@@ -323,11 +308,11 @@ avs_scale_pts(AVS_PTS pts, AVStream *stream)
      }
      OUTPUT: RETVAL
     
-AVS_PTS
+AV_Streamer_PTS
 avs_get_avpacket_scaled_pts(pkt, stream, global_pts)
 AVPacket *pkt;
 AVStream *stream;
-AVS_PTS global_pts;
+AV_Streamer_PTS global_pts;
     CODE:
     {
         double pts;
@@ -361,7 +346,7 @@ AVPacket* pkt;
        av_free_packet(pkt);
 
 int
-avs_read_packet(ctx, pkt)
+avs_read_frame(ctx, pkt)
 AVFormatContext *ctx;
 AVPacket *pkt;
     CODE:
@@ -369,6 +354,7 @@ AVPacket *pkt;
         /* read one frame packet, wants allocated pkt for storage. call
             avs_free_avpacket when done with the pkt */
 
+        /* do we need to init the packet? */
         RETVAL = av_read_frame(ctx, pkt);
     }
     OUTPUT: RETVAL
@@ -427,15 +413,17 @@ AVFormatContext* format_ctx;
 AVStream* ostream;
 AVFrame* iframe;
 AVPacket* opkt;
-AVS_FrameBuffer* obuf;
+AV_Streamer_FrameBuffer* obuf;
 unsigned int obuf_size;
-AVS_PTS pts;
+AV_Streamer_PTS pts;
     CODE:
     {
         /* TODO: image resampling with sws_scale() */
         int status;
         AVCodecContext *enc = ostream->codec;
 
+        av_init_packet(opkt);
+        
         /* encode frame into opkt */
         opkt->stream_index = ostream->index;
         status = avcodec_encode_video(enc, obuf, obuf_size, iframe);
@@ -670,13 +658,14 @@ char* format;
     OUTPUT: RETVAL
 
 AVFormatContext*
-avs_create_output_format_ctx(ofmt, uri)
+avs_create_output_format_ctx(self, ofmt, uri)
+SV* self;
 AVOutputFormat* ofmt;
 char* uri;
+    PREINIT:
+        AVFormatContext *ctx;
     CODE:
     {
-        AVFormatContext *ctx;
-
         ctx = avformat_alloc_context();
         if (! ctx) {
             /* out of memory! */
@@ -910,8 +899,8 @@ int pixfmt;
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
         c->pix_fmt = pixfmt;
 
-        printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
-            width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);
+        /*printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
+            width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);*/
 
         if (c->codec_id == CODEC_ID_MPEG1VIDEO) {
             c->mb_decision = 2;
@@ -1068,10 +1057,16 @@ AVFormatContext* ctx;
         av_free(ctx);
     }
 
+AV_Streamer_FrameBuffer*
+avs_alloc_output_buffer(size)
+unsigned int size;
+    CODE:
+        RETVAL = av_mallocz(size);
+    OUTPUT:
+        RETVAL
 
 
-
- # borrowed from libav cmdutils
+# borrowed from libav cmdutils
 
 void
 avs_destroy_pts_correction_context(ctx)
@@ -1088,3 +1083,6 @@ avs_alloc_and_init_pts_correction_context()
         init_pts_correction(pcc);
         RETVAL = pcc;
     OUTPUT: RETVAL
+
+
+

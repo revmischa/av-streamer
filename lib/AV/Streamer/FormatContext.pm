@@ -1,12 +1,16 @@
 package AV::Streamer::FormatContext;
 
-use Mouse;
+use Moose;
 use namespace::autoclean;
+
 use AV::Streamer;
 use AV::Streamer::Stream;
 use AV::Streamer::Stream::Audio;
 use AV::Streamer::Stream::Video;
 use AV::Streamer::OutputFormat;
+
+#use XS::Object::Magic;
+use Devel::Peek qw/SvREFCNT_inc Dump/;
 
 use Carp qw/croak/;
 
@@ -57,8 +61,8 @@ has 'input_opened' => (
     isa => 'Bool',
 );
 
-# FFS_AVFormatCtx
-# required if is input stream
+# AVFormatCtx
+# required if this is an input context
 has 'avformat' => (
     is => 'rw',
     isa => 'AVFormatContext',
@@ -90,15 +94,6 @@ has 'streams' => (
     default => sub { [] },
 );
 
-# pre-allocated avpacket used to store current frame
-has 'avpacket' => (
-    is => 'rw',
-    isa => 'AVPacket',
-    lazy => 1,
-    builder => 'build_avpacket',
-    predicate => 'avpacket_exists',
-);
-
 has 'header_written' => (
     is => 'rw',
     isa => 'Bool',
@@ -120,14 +115,6 @@ has 'global_pts' => (
 
 =cut
 
-
-
-# allocate an AVPacket for saving packets read from input
-sub build_avpacket {
-    my ($self) = @_;
-
-    return AV::Streamer::avs_alloc_avpacket();
-}
 
 # create avformatctx, open output file
 sub build_avformat_ctx {
@@ -156,7 +143,7 @@ sub build_avformat_ctx {
     $self->header_written(0);
 
     # attempt to open output
-    my $fmt = AV::Streamer::avs_create_output_format_ctx($ofmt->ofmt, $uri);
+    my $fmt = AV::Streamer::avs_create_output_format_ctx($self, $ofmt->ofmt, $uri);
     unless ($fmt) {
         die "Unable to open output $uri\n";
     }
@@ -380,10 +367,10 @@ sub get_stream {
 sub read_packet {
     my ($self) = @_;
 
-    my $format_ctx = $self->avformat;
-    my $pkt = $self->avpacket;
-    AV::Streamer::avs_init_avpacket($pkt);
-    my $ret = AV::Streamer::avs_read_packet($format_ctx, $pkt);
+    # pkt will be freed when $retpkt is destroyed
+    my $pkt = AV::Streamer::avs_alloc_avpacket();
+
+    my $ret = AV::Streamer::avs_read_frame($self->avformat, $pkt);
 
     my $retpkt = AV::Streamer::Packet->new(
         avpacket => $pkt,
@@ -413,18 +400,19 @@ sub write_trailer {
     return AV::Streamer::avs_write_trailer($self->avformat);
 }
 
+# note: $self->avformat may be undef if we're in global destruction,
+# because there is no way of specifying a sensible order of
+# deallocation. not that we care, because we're in global destruction.
 sub DEMOLISH {
     my ($self) = @_;
 
-    AV::Streamer::avs_dealloc_avpacket($self->avpacket)
-        if $self->avpacket_exists;
-
     if ($self->input_opened) {
         # this destroys the avformat context
-        AV::Streamer::avs_close_input_file($self->avformat);
+        AV::Streamer::avs_close_input_file($self->avformat)
+            if $self->avformat_exists && $self->avformat;
     } else {
         AV::Streamer::avs_destroy_context($self->avformat)
-            if $self->avformat_exists;
+            if $self->avformat_exists && $self->avformat;
     }
 }
 

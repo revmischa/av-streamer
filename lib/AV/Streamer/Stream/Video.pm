@@ -89,7 +89,8 @@ sub encode_frame {
     my $repeat_pict = AV::Streamer::avs_get_avframe_repeat_pict($iavframe);
     $frame_delay += $repeat_pict * ($frame_delay * 0.5);
     $pts = $pts + $frame_delay;
-    
+
+    # encode $iavframe into $oavpkt
     my $res = AV::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 
     if ($res < 0) {

@@ -7,10 +7,10 @@ AVOutputFormat  *                 T_PTROBJ_SPECIAL
 AVFrame         *                 T_PTROBJ_SPECIAL
 AVPacket        *                 T_PTROBJ_SPECIAL
 PtsCorrectionContext  *           T_PTROBJ_SPECIAL
-AVS_FrameBuffer *                 T_PTROBJ_SPECIAL
+AV_Streamer_FrameBuffer *         T_PTROBJ_SPECIAL
 PixelFormat                       T_IV
 CodecID                           T_IV
-AVS_PTS                           T_NV
+AV_Streamer_PTS                   T_NV
 
 INPUT
 T_PTROBJ_SPECIAL
@@ -25,3 +25,6 @@ OUTPUT
 T_PTROBJ_SPECIAL
         sv_setref_pv($arg, \"${(my $ntt=$ntype)=~s/_/::/g;$ntt=~s/Ptr$//;\$ntt}\",
                            (void*)$var);
+
+
+

@@ -49,9 +49,7 @@ sub scaled_pts {
 sub DEMOLISH {
     my ($self) = @_;
 
-    # we don't need to destroy avpacket because it's passed in from
-    # elsewhere. the user of this library takes responsibility for
-    # the packet, allowing us to reuse an allocated packet.
+    AV::Streamer::avs_dealloc_avpacket($self->avpacket);
 }
 
 __PACKAGE__->meta->make_immutable;

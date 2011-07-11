@@ -22,3 +22,4 @@ unless ($s->output_uri) {
 
 $s->stream;
 
+undef $s;

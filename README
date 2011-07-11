@@ -3,12 +3,20 @@ AV::Streamer
 
 Module to make transcoding, saving and broadcasting AV streams simple.
 
+
+Documentation, usage and examples are in perldoc. To view:
+perldoc lib/AV/Streamer.pm
+
+
+-----------------
+
+
+INSTALLATION
+
 This module requires libav development libraries, >= 0.7
 (available from http://libav.org/download.html)
 
 Debian: aptitude install libavformat-dev libavcodec-dev pkg-config
-
-INSTALLATION
 
 To install this module type the following:
 
@@ -18,7 +26,10 @@ To install this module type the following:
    make install
 
 
-DESCRIPTION
+-----------------
+
+
+OVERVIEW
 
 This module is an attempt to encapsulate high-level media streaming
 operations in a perl module. It does this by wrapping libav in an XS
@@ -84,10 +95,15 @@ This module attempts to simplify this process. See
 AV::Streamer POD docs for details on usage.
 
 
+-----------------
+
+
 ACKNOWLEDGEMENTS
 
 This library makes use of code copied from Max Vohra's Video::FFmpeg
-and Martin Boehm's avcodec sample application.
+module and Martin Boehm's avcodec sample application. Absolutely no
+help at all was given by anyone from the FFmpeg and libav teams who
+like to pretend I don't exist.
 
 
 COPYRIGHT AND LICENCE
