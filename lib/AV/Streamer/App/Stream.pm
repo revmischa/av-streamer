@@ -1,4 +1,4 @@
-package AV::Streamer::App::Streamer;
+package AV::Streamer::App::Stream;
 
 use Mouse;
     with 'MouseX::Getopt';

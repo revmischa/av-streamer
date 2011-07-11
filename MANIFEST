@@ -1,6 +1,5 @@
-ffstream.pl
 lib/AV/Streamer.pm
-lib/AV/Streamer/App/Streamer.pm
+lib/AV/Streamer/App/Stream.pm
 lib/AV/Streamer/CodecContext.pm
 lib/AV/Streamer/FormatContext.pm
 lib/AV/Streamer/Frame.pm
@@ -14,8 +13,9 @@ Makefile.PL
 MANIFEST			This list of files
 ppport.h
 README
+stream.pl
+Streamer.h
 Streamer.xs
 StreamerUtils.c
-StreamerUtils.h
 t/AV-Streamer.t
 typemap

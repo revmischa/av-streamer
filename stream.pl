@@ -7,11 +7,11 @@ use Moose;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use AV::Streamer::App::Streamer;
+use AV::Streamer::App::Stream;
 
 ###
 
-my $s = AV::Streamer::App::Streamer->new_with_options;
+my $s = AV::Streamer::App::Stream->new_with_options;
 
 # get output uri
 unless ($s->output_uri) {
@@ -21,5 +21,3 @@ unless ($s->output_uri) {
 }
 
 $s->stream;
-
-undef $s;

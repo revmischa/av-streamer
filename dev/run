@@ -1,2 +1,2 @@
 cd ..
-make && perl -I blib/arch/auto/AV/Streamer ./ffstream.pl $*
+make && perl -I blib/arch/auto/AV/Streamer ./stream.pl $*

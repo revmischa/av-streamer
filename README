@@ -7,6 +7,8 @@ Module to make transcoding, saving and broadcasting AV streams simple.
 Documentation, usage and examples are in perldoc. To view:
 perldoc lib/AV/Streamer.pm
 
+See lib/AV/Streamer/App/Stream.pm for a sample command-line
+application similar to ffmpeg.
 
 -----------------
 
