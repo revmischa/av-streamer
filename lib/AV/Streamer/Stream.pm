@@ -73,7 +73,7 @@ has 'output_buffer_size' => (
 );
 has '_output_buffer' => (
     is => 'rw',
-    isa => 'AV::Streamer::FrameBuffer',
+    isa => 'AVSFrameBuffer',
     lazy => 1,
     predicate => 'has_output_buffer',
     builder => 'build_output_buffer',

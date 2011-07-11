@@ -35,8 +35,7 @@ BOOT:
 #pragma mark methods
 
 AVFormatContext*
-avs_open_uri(uri)
-char* uri;
+avs_open_uri(char *uri)
     CODE:
     {
         /* avs_open_uri: wrapper around av_open_input_file */
@@ -206,14 +205,14 @@ AVFrame* frame;
     
 void
 avs_dealloc_output_buffer(buf)
-AV_Streamer_FrameBuffer* buf;
+AVSFrameBuffer* buf;
     CODE:
     {
         /* dellocate frame buffer storage */
         free(buf);
     }
 
-AV_Streamer_FrameBuffer*
+AVSFrameBuffer*
 avs_alloc_frame_buffer(codec_ctx, dst_frame, pixformat)
 AVCodecContext* codec_ctx;
 AVFrame* dst_frame;
@@ -221,7 +220,7 @@ int pixformat;
     CODE:
     {
         unsigned int size;
-        AV_Streamer_FrameBuffer *buf;
+        AVSFrameBuffer *buf;
                 
         /* calculate size of storage required for a frame */
         size = avpicture_get_size(pixformat, codec_ctx->width,
@@ -258,49 +257,49 @@ AVPacket *pkt;
         RETVAL = pkt->stream_index;
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_no_pts_value()
     CODE: { RETVAL = AV_NOPTS_VALUE; }
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_get_avpacket_dts(pkt)
 AVPacket *pkt;
     CODE:
         RETVAL = pkt->dts;
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_get_avpacket_pts(pkt)
 AVPacket *pkt;
     CODE:
         RETVAL = pkt->pts;
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_get_avframe_pkt_dts(frame)
 AVFrame *frame;
     CODE:
         RETVAL = frame->pkt_dts;
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_get_avframe_pts(frame)
 AVFrame *frame;
     CODE:
         RETVAL = frame->pts;
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
+AVSPTS
 avs_guess_correct_pts(ctx, in_pts, dts)
 PtsCorrectionContext *ctx;
-AV_Streamer_PTS in_pts;
-AV_Streamer_PTS dts;
+AVSPTS in_pts;
+AVSPTS dts;
     CODE: { RETVAL = guess_correct_pts(ctx, in_pts, dts); }
     OUTPUT: RETVAL
 
-AV_Streamer_PTS
-avs_scale_pts(AV_Streamer_PTS pts, AVStream *stream)
+AVSPTS
+avs_scale_pts(AVSPTS pts, AVStream *stream)
      CODE:
      {
          pts *= av_q2d(stream->time_base);
@@ -308,11 +307,11 @@ avs_scale_pts(AV_Streamer_PTS pts, AVStream *stream)
      }
      OUTPUT: RETVAL
     
-AV_Streamer_PTS
+AVSPTS
 avs_get_avpacket_scaled_pts(pkt, stream, global_pts)
 AVPacket *pkt;
 AVStream *stream;
-AV_Streamer_PTS global_pts;
+AVSPTS global_pts;
     CODE:
     {
         double pts;
@@ -413,9 +412,9 @@ AVFormatContext* format_ctx;
 AVStream* ostream;
 AVFrame* iframe;
 AVPacket* opkt;
-AV_Streamer_FrameBuffer* obuf;
+AVSFrameBuffer* obuf;
 unsigned int obuf_size;
-AV_Streamer_PTS pts;
+AVSPTS pts;
     CODE:
     {
         /* TODO: image resampling with sws_scale() */
@@ -1057,7 +1056,7 @@ AVFormatContext* ctx;
         av_free(ctx);
     }
 
-AV_Streamer_FrameBuffer*
+AVSFrameBuffer*
 avs_alloc_output_buffer(size)
 unsigned int size;
     CODE:

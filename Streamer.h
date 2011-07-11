@@ -12,8 +12,8 @@
 
 #pragma mark types
 typedef enum CodecID    CodecID;
-typedef uint8_t         AV_Streamer_FrameBuffer;
-typedef double          AV_Streamer_PTS;
+typedef uint8_t         AVSFrameBuffer;
+typedef int64_t         AVSPTS;
 typedef short bool_t;
 
 

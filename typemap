@@ -7,10 +7,10 @@ AVOutputFormat  *                 T_PTROBJ_SPECIAL
 AVFrame         *                 T_PTROBJ_SPECIAL
 AVPacket        *                 T_PTROBJ_SPECIAL
 PtsCorrectionContext  *           T_PTROBJ_SPECIAL
-AV_Streamer_FrameBuffer *         T_PTROBJ_SPECIAL
+AVSFrameBuffer *                  T_PTROBJ_SPECIAL
 PixelFormat                       T_IV
 CodecID                           T_IV
-AV_Streamer_PTS                   T_NV
+AVSPTS                            T_NV
 
 INPUT
 T_PTROBJ_SPECIAL
