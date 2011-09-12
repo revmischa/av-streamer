@@ -181,18 +181,17 @@ sub set_metadata {
 }
 
 
-=item add_audio_stream(\%options)
+=item add_audio_stream(%options)
 
 See L<AV::Streamer::Stream> for options.
 
 =cut
 sub add_audio_stream {
-    my ($self, $opts) = @_;
+    my ($self, %opts) = @_;
 
-    $opts ||= {};
-    $opts->{type} = 'audio';
+    $opts{type} = 'audio';
 
-    unless (defined $opts->{index}) {
+    unless (defined $opts{index}) {
         my $input_stream_index = $self->input_format_context->get_first_audio_stream_index;
 
         unless (defined $input_stream_index) {
@@ -200,25 +199,24 @@ sub add_audio_stream {
             return;
         }
 
-        $opts->{index} = $input_stream_index;
+        $opts{index} = $input_stream_index;
     }
 
-    $self->add_stream($opts);
+    $self->add_stream(%opts);
 }
 
 
-=item add_video_stream(\%options)
+=item add_video_stream(%options)
 
 See L<AV::Streamer::Stream> for options.
 
 =cut
 sub add_video_stream {
-    my ($self, $opts) = @_;
+    my ($self, %opts) = @_;
 
-    $opts ||= {};
-    $opts->{type} = 'video';
+    $opts{type} = 'video';
 
-    unless (defined $opts->{index}) {
+    unless (defined $opts{index}) {
         my $input_stream_index = $self->input_format_context->get_first_video_stream_index;
 
         unless (defined $input_stream_index) {
@@ -226,16 +224,16 @@ sub add_video_stream {
             return;
         }
 
-        $opts->{index} = $input_stream_index;
+        $opts{index} = $input_stream_index;
     }
 
-    $self->add_stream($opts);
+    $self->add_stream(%opts);
 }
 
 sub add_stream {
-    my ($self, $opts) = @_;
+    my ($self, %opts) = @_;
 
-    my $index = $opts->{index};
+    my $index = $opts{index};
     croak "Stream index is required" unless defined $index;
 
     my $input_stream = $self->streamer->input_format_context->get_stream($index);
@@ -246,18 +244,18 @@ sub add_stream {
 
     my $output_stream;
 
-    $opts->{format_ctx}   = $self;
-    $opts->{bit_rate}   ||= $self->bit_rate || $input_stream->bit_rate;
+    $opts{format_ctx}   = $self;
+    $opts{bit_rate}   ||= $self->bit_rate || $input_stream->bit_rate;
     
-    if ($opts->{codec_name} && lc $opts->{codec_name} eq 'copy') {
-        $opts->{stream_copy} = 1;
+    if ($opts{codec_name} && lc $opts{codec_name} eq 'copy') {
+        $opts{stream_copy} = 1;
     }
 
-    if (! $opts->{bit_rate} && ! $opts->{stream_copy}) {
+    if (! $opts{bit_rate} && ! $opts{stream_copy}) {
         croak "Bitrate is unknown for input, you must specify a bitrate if transcoding";
     }
 
-    $opts->{codec_name} ||= $input_stream->codec_name;
+    $opts{codec_name} ||= $input_stream->codec_name;
 
     my $stream_class;
 
@@ -281,11 +279,11 @@ sub add_stream {
         foreach my $param (@stream_params) {
             my $val = $input_stream->$param;
             next unless defined $val;
-            $opts->{$param} ||= $val;
+            $opts{$param} ||= $val;
         }
     }
 
-    $output_stream = $stream_class->new($opts);
+    $output_stream = $stream_class->new(%opts);
     $output_stream->create_avstream($input_stream);
 
     $self->streams->[$index] ||= [];

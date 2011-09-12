@@ -45,16 +45,16 @@ broadcasting AV streams simple.
 
   # add encoders for output stream
   # see L<AV::Streamer::CodecContext> for options
-  $output1->add_audio_stream({
+  $output1->add_audio_stream(
       codec_name  => 'libfaac',
       sample_rate => 44_100,
       bit_rate    => 64_000,
       channels    => 2,
-  });
-  $output1->add_video_stream({
+  );
+  $output1->add_video_stream(
       codec_name => 'libx264',
       bit_rate   => 200_000,
-  });
+  );
 
   # begin decoding input and streaming
   $streamer->stream;
@@ -127,7 +127,7 @@ sub debug {
     my ($self, $msg) = @_;
 
     return unless $self->debugging_enabled;
-    print "FFmpeg::Video::Streamer: $msg\n";
+    print "AV::Streamer: $msg\n";
     return undef;
 }
 
@@ -148,8 +148,14 @@ sub finish_streaming {
 # alias to input ctx
 sub input_ctx { $_[0]->input_format_context->avformat }
 
-# takes path to file or stream URI
-# returns context if success
+
+=item open_uri($uri)
+
+Opens an input for reading, $uri can be a file or a stream URI.
+
+Returns true if success.
+
+=cut
 sub open_uri {
     my ($self, $uri) = @_;
 
@@ -175,6 +181,13 @@ sub open_uri {
     return $fmt_ctx_obj;
 }
 
+
+=item add_output(%opts)
+
+Set a file or stream as an output destination. See
+L<AV::Streamer::FormatContext> for options.
+
+=cut
 sub add_output {
     my ($self, %opts) = @_;
 
@@ -185,9 +198,10 @@ sub add_output {
     return $output_fmt;
 }
 
-=item stream
 
-Streams from input stream to output streams
+=item stream()
+
+Streams from input stream to output streams until there are no more frames
 
 =cut
 sub stream {
@@ -203,9 +217,11 @@ sub stream {
     $_->write_trailer for @{ $self->output_format_contexts };
 }
 
-=item stream_frame
 
-Reads a packet from input and possibly encodes it to output streams
+=item stream_frame()
+
+Reads a packet from input and writes it to output streams, transcoding
+if necessary
 
 =cut
 sub stream_frame {
