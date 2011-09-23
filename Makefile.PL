@@ -27,6 +27,8 @@ WriteMakefile(
         'namespace::autoclean' => 0,
     },
 
+    META_ADD => { resources => { repository => 'git://github.com/revmischa/av-streamer.git' } },
+
     LIBS           => ["-lswscale $lavf_lib"],
     DEFINE         => '',
     INC            => "-I. $lavf_inc",

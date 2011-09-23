@@ -304,11 +304,12 @@ avs_raw_stream_packet(AVPacket *ipkt, AVPacket *opkt, AVStream *ist, AVStream *o
         int64_t ost_tb_start_time = av_rescale_q(start_time, AV_TIME_BASE_Q, ost->time_base);
 
         opkt->stream_index = ost->index;
-        if (ipkt->pts != AV_NOPTS_VALUE)
+        if (ipkt->pts != AV_NOPTS_VALUE) {
             opkt->pts = av_rescale_q(ipkt->pts, ist->time_base, ost->time_base) - ost_tb_start_time;
-        else
+        } else {
             opkt->pts = AV_NOPTS_VALUE;
- 
+        }
+
         opkt->dts -= ost_tb_start_time;
         opkt->duration = av_rescale_q(ipkt->duration, ist->time_base, ost->time_base);
         opkt->flags = ipkt->flags;
@@ -736,8 +737,8 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *cod
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
         c->pix_fmt = pixfmt;
 
-        /*printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
-            width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);*/
+        printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
+            width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);
 
         if (c->codec_id == CODEC_ID_MPEG1VIDEO) {
             c->mb_decision = 2;
