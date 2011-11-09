@@ -664,17 +664,25 @@ avs_copy_stream_params(AVFormatContext *ofmt, AVStream *istream, AVStream *ostre
               ocodec->sample_rate = icodec->sample_rate;
               ocodec->channels = icodec->channels;
               ocodec->frame_size = icodec->frame_size;
+              codec->audio_service_type = icodec->audio_service_type;
               ocodec->block_align = icodec->block_align;
               if (ocodec->block_align == 1 && ocodec->codec_id == CODEC_ID_MP3)
                   ocodec->block_align= 0;
-                  if (ocodec->codec_id == CODEC_ID_AC3)
-                    ocodec->block_align= 0;
-                  break;
+              if (ocodec->codec_id == CODEC_ID_AC3)
+                  ocodec->block_align= 0;
+               break;
              case AVMEDIA_TYPE_VIDEO:
                  ocodec->pix_fmt = icodec->pix_fmt;
                  ocodec->width = icodec->width;
                  ocodec->height = icodec->height;
                  ocodec->has_b_frames = icodec->has_b_frames;
+                 if (!codec->sample_aspect_ratio.num) {
+                     codec->sample_aspect_ratio =
+                     ost->st->sample_aspect_ratio =
+                         ist->st->sample_aspect_ratio.num ? ist->st->sample_aspect_ratio :
+                         ist->st->codec->sample_aspect_ratio.num ?
+                         ist->st->codec->sample_aspect_ratio : (AVRational){0, 1};
+                 }
                  break;
              case AVMEDIA_TYPE_SUBTITLE:
                  ocodec->width = icodec->width;

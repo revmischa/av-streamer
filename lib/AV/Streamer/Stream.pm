@@ -56,7 +56,7 @@ has 'bit_rate' => (
 has 'stream_copy' => (
     is => 'ro',
     isa => 'Bool',
-    default => 0,
+    lazy_build => 1,
 );
 
 has 'codec_open' => (
@@ -138,12 +138,20 @@ sub build_codec_ctx {
     }
 }
 
+# are we just copying input codec data to output, or are we transcoding?
+sub _build_stream_copy {    
+    my ($self) = @_;
+
+    return 1 if $self->codec_name eq 'copy';
+    return 0;
+}
+
+# do we need to encode the stream data, or is it already encoded for
+# us (stream copy)?
 sub needs_encoding {
     my ($self) = @_;
 
-    return 0 if $self->codec_name eq 'copy';
-    return 0 if $self->stream_copy;
-    return 1;
+    return $self->stream_copy ? 0 : 1;
 }
 
 sub build_index {
