@@ -25,6 +25,7 @@ WriteMakefile(
         'Mouse' => 0,
         'MouseX::Getopt' => 0,
         'namespace::autoclean' => 0,
+        'ExtUtils::PkgConfig' => 0,
     },
 
     META_ADD => { resources => { repository => 'git://github.com/revmischa/av-streamer.git' } },
