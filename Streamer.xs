@@ -16,7 +16,6 @@
 #include "Streamer.h"
 
 #define AVS_DEFAULT_PIXFMT PIX_FMT_YUV420P
-static float mux_preload   = 0.5;
 static float mux_max_delay = 0.7;
 
 #pragma mark globals
@@ -29,6 +28,7 @@ PROTOTYPES: ENABLE
 BOOT:
 {
     av_register_all();
+    avformat_network_init();
     pthread_mutex_init(&AVFormatCtxMP, NULL);
 }
 
@@ -56,7 +56,7 @@ avs_open_uri(char *uri)
             XSRETURN_UNDEF;
 
         /* make sure we can read the stream */
-        int ret = av_find_stream_info(format_ctx);
+        int ret = avformat_find_stream_info(format_ctx, NULL);
         if ( ret < 0 ) {
             fprintf(stderr, "Failed to find codec parameters for input %s\n", uri);
             XSRETURN_UNDEF;
@@ -101,7 +101,7 @@ avs_open_decoder(AVCodecContext *codec_ctx, CodecID codec_id)
             XSRETURN_UNDEF;
         }
 
-        if (avcodec_open(codec_ctx, codec) < 0) {
+        if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
             fprintf(stderr, "Failed to open codec %s\n", codec->name);
             XSRETURN_UNDEF;
         }
@@ -326,27 +326,40 @@ avs_encode_video_frame(AVFormatContext *format_ctx, AVStream *ostream, AVFrame *
     CODE:
     {
         /* TODO: image resampling with sws_scale() */
-        int status;
+        int status, got_packet;
         AVCodecContext *enc = ostream->codec;
 
         av_init_packet(opkt);
+
+        /* we are passing our own buffer to use to encode_video2 */
+        /* (via opkt) */
+        opkt->data = obuf;
+        opkt->size = obuf_size;
         
         /* encode frame into opkt */
+        status = avcodec_encode_video2(enc, opkt, iframe, &got_packet);
         opkt->stream_index = ostream->index;
-        status = avcodec_encode_video(enc, obuf, obuf_size, iframe);
-
+        
         RETVAL = status;
 
-        if (status > 0) {
-            opkt->size = status;
-            opkt->data = obuf;
+        if (status != 0) {
+            /* failure */
+            fprintf(stderr, "Failed to encode video, code %d\n", status);
+            return;
+        }
+
+        printf("coded packet, size: %d, packet pts: %l, enc pts: %l\n",
+            opkt->size, opkt->pts, enc->coded_frame->pts);
             
-            if (enc->coded_frame && enc->coded_frame->pts != AV_NOPTS_VALUE)
+        if (enc->coded_frame && enc->coded_frame->pts != AV_NOPTS_VALUE) {
                 opkt->pts = av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);
 
             if (enc->coded_frame && enc->coded_frame->key_frame)
                 opkt->flags |= AV_PKT_FLAG_KEY;
        }
+
+       /* need to set stream PTS as well */
+       /* ostream->pts = enc->coded_frame->pts; */
     }
     OUTPUT: RETVAL
 
@@ -557,7 +570,6 @@ avs_create_output_format_ctx(AVOutputFormat *ofmt, char *uri)
 
         /* TODO: copy metadata from input? */
 
-        ctx->preload   = (int)(mux_preload*AV_TIME_BASE);
         ctx->max_delay = (int)(mux_max_delay*AV_TIME_BASE);
 
         RETVAL = ctx;
@@ -745,6 +757,10 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *cod
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
         c->pix_fmt = pixfmt;
 
+        /* FIXME: set video stream frame rate to match. */
+        vs->r_frame_rate.num = base_num;
+        vs->r_frame_rate.den = base_den;
+
         printf("\nwidth: %d, height: %d, bitrate: %u, framerate: %i/%i, timebase: %i/%i, pixfmt: %d, gopsize: %d\n",
             width, height, bitrate, vs->r_frame_rate.num, vs->r_frame_rate.den, base_num, base_den, pixfmt, gopsize);
 
@@ -813,47 +829,41 @@ avs_set_audio_stream_params(AVFormatContext *ofmt, AVStream *as, const char *cod
 AVStream*
 avs_new_output_audio_stream(AVFormatContext *ctx, unsigned int sample_rate, unsigned int bit_rate)
     CODE:
-    {
-        AVStream *as = NULL;
+    {        
         int i;
-
                 
+        /* find codec */
+        /* we should probably pass desired audio codec in here */
         if (ctx->oformat->audio_codec == CODEC_ID_NONE)
             XSRETURN_UNDEF;
+
+        /* find encoder for codec */
+        AVCodec *codec = avcodec_find_encoder(ctx->oformat->audio_codec);
+        if (! codec) {
+            fprintf(stderr, "failed to find encoder");
+            XSRETURN_UNDEF;
+        }
+
+        /* create codec context, sets default values */
+        AVCodecContext *c = avcodec_alloc_context3(codec);
         
-        AVCodecContext *c;
-        as = av_new_stream(ctx, 0);
+        /* open encoder */
+        int res = avcodec_open2(c, codec, NULL);
+        if (res != 0) {
+            fprintf(stderr, "failed to open codec, code: %d\n", res);
+            XSRETURN_UNDEF;
+        }
+
+        /* create new audio stream */
+        AVStream *as = avformat_new_stream(ctx, codec);
         if (! as) {
             XSRETURN_UNDEF;
         }
         
         as->stream_copy = 1;
-        
-        c = as->codec;
-        c->codec_id = ctx->oformat->audio_codec;
-        c->codec_type = AVMEDIA_TYPE_VIDEO;
-
-        /* put sample parameters */
-        c->bit_rate = bit_rate;
-        c->sample_rate = sample_rate;
-        c->channels = 2;
-        c->sample_fmt = AV_SAMPLE_FMT_S16;
             
-        /* open audio stream codec */
-        AVCodec *codec;
-        codec = avcodec_find_encoder(c->codec_id);
-        if (! codec) {
-            fprintf(stderr, "failed to find encoder");
-            return;
-        }
-
         av_dump_format(ctx, 0, "output", 1);
             
-        if (avcodec_open(c, codec) < 0) {
-            fprintf(stderr, "failed to open codec");
-            return;
-        }
-
         RETVAL = as;
     }
     OUTPUT: RETVAL

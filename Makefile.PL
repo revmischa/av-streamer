@@ -11,8 +11,8 @@ use ExtUtils::PkgConfig;
 
 my $lavf_lib = ExtUtils::PkgConfig->libs("libavformat");
 my $lavf_inc = ExtUtils::PkgConfig->cflags("libavformat");
-die("Installed libavformat version is too low. I require libav 0.7 or greater")
-    unless ExtUtils::PkgConfig->atleast_version("libavformat", "53.0.3");
+die("Installed libavformat version is too low. I require libav 0.8 or greater")
+    unless ExtUtils::PkgConfig->atleast_version("libavformat", "53.20.0");
 
 WriteMakefile(
     NAME           => 'AV::Streamer',

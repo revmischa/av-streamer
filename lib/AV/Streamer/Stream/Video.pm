@@ -111,7 +111,7 @@ sub encode_frame {
     # encode $iavframe into $oavpkt
     my $res = AV::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);
 
-    if ($res < 0) {
+    if ($res) {
         warn "failed to encode frame";
     }
 
@@ -125,9 +125,11 @@ after 'create_avstream' => sub {
     my $oavstream = $self->avstream;
 
     if ($self->stream_copy) {
+        warn "copying stream params";
         my $ok = AV::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
+        warn "base num: " . $self->base_num . " base den: " . $self->base_den;
         my $ok = AV::Streamer::avs_set_video_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
