@@ -9,10 +9,17 @@ use ExtUtils::PkgConfig;
 
 # You will need libavformat-dev, libavcodec-dev and pkg-config
 
+# compiler/linker flags for libavformat
+die("Installed libavformat version is too low. libav 0.9 or greater required.")
+    unless ExtUtils::PkgConfig->atleast_version("libavformat", "54.1.0");
 my $lavf_lib = ExtUtils::PkgConfig->libs("libavformat");
 my $lavf_inc = ExtUtils::PkgConfig->cflags("libavformat");
-die("Installed libavformat version is too low. I require libav 0.8 or greater")
-    unless ExtUtils::PkgConfig->atleast_version("libavformat", "53.20.0");
+
+# compiler/linker flags for libavcodec
+die("Installed libavcodec version is too low. libav 0.9 or greater required.")
+    unless ExtUtils::PkgConfig->atleast_version("libavcodec", "54.2.0");
+my $lavc_lib = ExtUtils::PkgConfig->libs("libavcodec");
+my $lavc_inc = ExtUtils::PkgConfig->cflags("libavcodec");
 
 WriteMakefile(
     NAME           => 'AV::Streamer',
@@ -30,8 +37,8 @@ WriteMakefile(
 
     META_ADD => { resources => { repository => 'git://github.com/revmischa/av-streamer.git' } },
 
-    LIBS           => ["-lswscale $lavf_lib"],
+    LIBS           => ["-lswscale $lavf_lib $lavc_lib"],
     DEFINE         => '',
-    INC            => "-I. $lavf_inc",
+    INC            => "-I. $lavf_inc $lavc_inc",
     OBJECT         => '$(O_FILES)',
 );

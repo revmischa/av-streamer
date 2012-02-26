@@ -407,6 +407,18 @@ avs_get_codec_ctx_codec(AVCodecContext *c)
         RETVAL = c->codec;
     OUTPUT: RETVAL
 
+AVCodec*
+avs_get_stream_codec(AVStream *s)
+    CODE:
+        RETVAL = s->codec->codec;
+    OUTPUT: RETVAL
+
+AVCodecContext*
+avs_get_stream_codec_ctx(AVStream *s)
+    CODE:
+        RETVAL = s->codec;
+    OUTPUT: RETVAL
+
 const char*
 avs_get_codec_ctx_codec_name(AVCodecContext *c)
     CODE:
@@ -609,22 +621,6 @@ avs_write_trailer(AVFormatContext *ctx)
     CODE:
         av_write_trailer(ctx);
 
-AVStream*
-avs_create_stream(AVFormatContext *ofmt)
-    CODE:
-    {
-        AVStream *vs = NULL;
-
-        vs = av_new_stream(ofmt, 0);
-        if (! vs) {
-            fprintf(stderr, "av_new_stream failed\n");
-            XSRETURN_UNDEF;
-        }
-
-        RETVAL = vs;
-    }
-    OUTPUT: RETVAL
-
 int
 avs_copy_stream_params(AVFormatContext *ofmt, AVStream *istream, AVStream *ostream)
     CODE:
@@ -707,42 +703,15 @@ avs_copy_stream_params(AVFormatContext *ofmt, AVStream *istream, AVStream *ostre
     OUTPUT: RETVAL
 
 int
-avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *codec_name, unsigned short stream_copy, unsigned int width, unsigned int height, unsigned int bitrate, int base_num, int base_den, unsigned int gopsize, int pixfmt)
+avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, unsigned int width, unsigned int height, unsigned int bitrate, int base_num, int base_den, unsigned int gopsize, int pixfmt)
     CODE:
     {
         int i;
 
         if (! pixfmt)
             pixfmt = AVS_DEFAULT_PIXFMT;
-                
-        if (! codec_name && ofmt->oformat->video_codec == CODEC_ID_NONE) {
-            fprintf(stderr, "No encoder specified for avs_set_video_stream_params\n");
-            XSRETURN_UNDEF;
-        }
-
-        vs->stream_copy = stream_copy;
 
         AVCodecContext *c = vs->codec;
-        AVCodec *codec = NULL;
-
-        if (codec_name) {
-            /* look up codec */
-            codec = avcodec_find_encoder_by_name(codec_name);
-            if (! codec) {
-                fprintf(stderr, "failed to find encoder for codec named '%s'\n", codec_name);
-                XSRETURN_UNDEF;
-            }
-        } else {
-            /* use default codec for output format */
-            codec = avcodec_find_encoder(ofmt->oformat->video_codec);
-            if (! codec) {
-                fprintf(stderr, "failed to find default encoder for codec id %d\n", c->codec_id);
-                XSRETURN_UNDEF;
-            }
-            printf("using default codec\n");
-        }
-
-        c->codec_type = AVMEDIA_TYPE_VIDEO;
 
         /* put sample parameters */
         c->bit_rate = bitrate;
@@ -755,6 +724,9 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *cod
         c->time_base = (AVRational){ base_num / i, base_den / i };
         
         c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
+
+        /* need to copy input pixel format */
+        /* TODO: check input against list of supported pix_fmts in the encoder. if no match, choose the best one and convert using libswscale or libavfilter scale filter */
         c->pix_fmt = pixfmt;
 
         /* FIXME: set video stream frame rate to match. */
@@ -772,12 +744,6 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *cod
         if (ofmt->oformat->flags & AVFMT_GLOBALHEADER)
             c->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-        /* open video stream codec */
-        if (avcodec_open(c, codec) < 0) {
-            fprintf(stderr, "failed to open codec\n");
-            XSRETURN_UNDEF;
-        }
-
         av_dump_format(ofmt, 0, "output", 1);
 
         RETVAL = 1;
@@ -785,37 +751,10 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, const char *cod
     OUTPUT: RETVAL        
 
 int
-avs_set_audio_stream_params(AVFormatContext *ofmt, AVStream *as, const char *codec_name, unsigned short stream_copy, unsigned int channels, unsigned int sample_rate, unsigned int bit_rate)
+avs_set_audio_stream_params(AVFormatContext *ofmt, AVStream *as, unsigned int channels, unsigned int sample_rate, unsigned int bit_rate)
     CODE:
     {
-        if (! codec_name && ofmt->oformat->audio_codec == CODEC_ID_NONE) {
-            fprintf(stderr, "No encoder specified for avs_set_audio_stream_params\n");
-            XSRETURN_UNDEF;
-        }
-
-        as->stream_copy = stream_copy;
-
         AVCodecContext *c = as->codec;
-        AVCodec *codec = NULL;
-
-        if (codec_name) {
-            /* look up codec */
-            codec = avcodec_find_encoder_by_name(codec_name);
-            if (! codec) {
-                fprintf(stderr, "failed to find encoder for codec named '%s'\n", codec_name);
-                XSRETURN_UNDEF;
-            }
-        } else {
-            /* use default codec for output format */
-            codec = avcodec_find_encoder(ofmt->oformat->audio_codec);
-            if (! codec) {
-                fprintf(stderr, "failed to find default encoder for audio codec id %d\n", c->codec_id);
-                XSRETURN_UNDEF;
-            }
-            printf("using default codec\n");
-        }
-
-        c->codec_type = AVMEDIA_TYPE_AUDIO;
 
         /* put sample parameters */
         c->bit_rate = bit_rate;
@@ -827,47 +766,52 @@ avs_set_audio_stream_params(AVFormatContext *ofmt, AVStream *as, const char *cod
     OUTPUT: RETVAL
 
 AVStream*
-avs_new_output_audio_stream(AVFormatContext *ctx, unsigned int sample_rate, unsigned int bit_rate)
+avs_create_output_video_stream(AVFormatContext *ctx, AVCodec *codec)
     CODE:
-    {        
-        int i;
-                
-        /* find codec */
-        /* we should probably pass desired audio codec in here */
-        if (ctx->oformat->audio_codec == CODEC_ID_NONE)
-            XSRETURN_UNDEF;
-
-        /* find encoder for codec */
-        AVCodec *codec = avcodec_find_encoder(ctx->oformat->audio_codec);
-        if (! codec) {
-            fprintf(stderr, "failed to find encoder");
-            XSRETURN_UNDEF;
-        }
-
-        /* create codec context, sets default values */
-        AVCodecContext *c = avcodec_alloc_context3(codec);
-        
-        /* open encoder */
-        int res = avcodec_open2(c, codec, NULL);
-        if (res != 0) {
-            fprintf(stderr, "failed to open codec, code: %d\n", res);
-            XSRETURN_UNDEF;
-        }
-
-        /* create new audio stream */
-        AVStream *as = avformat_new_stream(ctx, codec);
-        if (! as) {
-            XSRETURN_UNDEF;
-        }
-        
-        as->stream_copy = 1;
-            
-        av_dump_format(ctx, 0, "output", 1);
-            
-        RETVAL = as;
+    {
+        RETVAL = _avs_create_output_stream(ctx, codec);
     }
     OUTPUT: RETVAL
 
+AVStream*
+avs_create_output_audio_stream(AVFormatContext *ctx, AVCodec *codec)
+    CODE:
+    {
+        RETVAL = _avs_create_output_stream(ctx, codec);
+    }
+    OUTPUT: RETVAL
+
+AVCodec*
+avs_find_video_encoder(AVFormatContext *ctx, const char *codec_name)
+    CODE:
+    {
+        RETVAL = _avs_find_encoder(ctx, codec_name, AVMEDIA_TYPE_VIDEO);
+    }
+    OUTPUT: RETVAL
+
+AVCodec*
+avs_find_audio_encoder(AVFormatContext *ctx, const char *codec_name)
+    CODE:
+    {
+        RETVAL = _avs_find_encoder(ctx, codec_name, AVMEDIA_TYPE_AUDIO);
+    }
+    OUTPUT: RETVAL
+    
+int
+avs_open_encoder(AVCodecContext *c, AVCodec *codec)
+    CODE:
+    {
+        /* call open_encoder after you have found a codec and created an AVCodecContext via create_output_stream */
+        int res = avcodec_open2(c, codec, NULL);
+        if (res != 0) {
+            /* fprintf(stderr, "failed to open codec, code: %d\n", res); */
+            XSRETURN_UNDEF;
+        }
+        
+        RETVAL = 1;
+    }
+    OUTPUT: RETVAL
+    
 void
 avs_close_stream(AVFormatContext *ctx, AVStream *stream)
     CODE:
@@ -882,7 +826,7 @@ avs_dump_format(AVFormatContext *ctx, char *title)
 void
 avs_close_input_file(AVFormatContext *ctx)
     CODE:
-        av_close_input_file(ctx);
+        avformat_close_input(&ctx);
 
 void
 avs_destroy_context(AVFormatContext *ctx)

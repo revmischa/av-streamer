@@ -5,7 +5,7 @@ use namespace::autoclean;
 use AV::Streamer;
 use AV::Streamer::Packet;
 
-extends 'AV::Streamer::Stream';
+with 'AV::Streamer::Stream';
 
 use Carp qw/croak/;
 
@@ -53,7 +53,7 @@ sub free_decoded {
 sub encode_output {
     my ($self, $ipkt, $istream, $iframe, $oavpkt) = @_;
 
-    my $status = $self->encode_frame($istream, $ipkt, $iframe, $self, $oavpkt);
+    my $status = $self->encode_frame($istream, $ipkt, $iframe, $oavpkt);
     return unless $status;
     
     return AV::Streamer::avs_write_frame($self->format_ctx->avformat, $oavpkt);
@@ -96,11 +96,14 @@ sub decode_packet {
 
 # encode $iavframe into $oavpkt
 sub encode_frame {
-    my ($self, $istream, $ipkt, $iavframe, $ostream, $oavpkt) = @_;
+    my ($self, $istream, $ipkt, $iavframe, $oavpkt) = @_;
 
+    croak "encode_frame called but no output stream has been created"
+        unless $self->avstream;
+    
     # get PTS and scale for output timebase
     my $pts = AV::Streamer::avs_get_avframe_pts($iavframe);
-    $pts = AV::Streamer::avs_scale_pts($pts, $ostream->avstream);
+    $pts = AV::Streamer::avs_scale_pts($pts, $self->avstream);
     
     # if we are repeating a frame, adjust clock accordingly
     my $frame_delay = $self->frame_delay;
@@ -118,14 +121,40 @@ sub encode_frame {
     return $res;
 }
 
-# set stream video params after creation
-after 'create_avstream' => sub {
-    my ($self, $istream) = @_;
+sub find_encoder {
+    my ($self, $codec_name) = @_;
 
-    my $oavstream = $self->avstream;
-
+    my $fmt_ctx = $self->format_ctx->avformat;
+    
+    my $codec;
     if ($self->stream_copy) {
-        warn "copying stream params";
+        # jack the codec from the input stream
+        $codec = AV::Streamer::avs_get_stream_codec($istream->avstream);
+    }
+
+    # look up by codec name
+    $codec ||= AV::Streamer::avs_find_video_encoder($fmt_ctx, $codec_name)
+       if $codec_name;
+    
+    # last resort - try default
+    $codec ||= AV::Streamer::avs_find_video_encoder($fmt_ctx, undef);
+
+    return $codec;
+}
+
+sub create_output_avstream {
+    my ($self, $istream, $codec) = @_;
+
+    my $fmt_ctx = $self->format_ctx->avformat;
+
+    # creates output stream and associated codec context
+    my $oavstream = AV::Streamer::avs_create_output_video_stream(
+        $self->format_ctx->avformat,
+        $codec,
+    ) or return;
+
+    # set our encoder params
+    if ($self->stream_copy) {
         my $ok = AV::Streamer::avs_copy_stream_params($self->format_ctx->avformat, $istream->avstream, $oavstream);
         die "Failed to copy stream params" unless $ok;
     } else {
@@ -133,8 +162,6 @@ after 'create_avstream' => sub {
         my $ok = AV::Streamer::avs_set_video_stream_params(
             $self->format_ctx->avformat,
             $oavstream,
-            $self->codec_name,
-            $self->stream_copy,
             $self->width,
             $self->height,
             $self->bit_rate,
@@ -146,6 +173,8 @@ after 'create_avstream' => sub {
 
         die "failed to set video stream params" unless $ok;
     }
+
+    return $oavstream;
 };
 
 __PACKAGE__->meta->make_immutable;

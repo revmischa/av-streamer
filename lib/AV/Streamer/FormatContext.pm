@@ -249,6 +249,7 @@ sub add_stream {
     
     if ($opts{codec_name} && lc $opts{codec_name} eq 'copy') {
         $opts{stream_copy} = 1;
+        $opts{codec_name} = $input_stream->codec_name;
     }
 
     if (! $opts{bit_rate} && ! $opts{stream_copy}) {
@@ -284,7 +285,9 @@ sub add_stream {
     }
 
     $output_stream = $stream_class->new(%opts);
-    $output_stream->create_avstream($input_stream);
+
+    # creates output AVStream
+    $output_stream->create_encoder($input_stream);
 
     $self->streams->[$index] ||= [];
     my $streams = $self->streams->[$index];

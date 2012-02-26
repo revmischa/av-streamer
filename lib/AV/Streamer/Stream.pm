@@ -1,10 +1,13 @@
 package AV::Streamer::Stream;
 
-use Mouse;
+use Mouse::Role;
 use namespace::autoclean;
 use AV::Streamer;
 
 use Carp qw/cluck croak/;
+
+requires 'create_output_avstream';
+requires 'find_encoder';
 
 =head1 NAME
 
@@ -107,7 +110,8 @@ sub build_output_buffer {
     return AV::Streamer::avs_alloc_output_buffer($self->output_buffer_size);
 }
 
-sub create_avstream {
+# creates an output AVStream with codec ready for encoding
+sub create_encoder {
     my ($self, $istream) = @_;
 
     $self->destroy_stream;
@@ -116,11 +120,34 @@ sub create_avstream {
         croak "Attempting to create stream without stream index defined";
     }
 
-    my $codec_name = $self->codec_name
-        or croak "Attempting to create stream without codec type defined";
+    my $codec_name = $self->codec_name;
+    unless ($codec_name) {
+        warn "No codec name specified, will attempt to guess default codec for output format\n";
+    }
 
-    my $oavstream = AV::Streamer::avs_create_stream($self->format_ctx->avformat)
-        or die "Failed to create new video stream for codec " . $self->codec_name;
+    my $codec = $self->find_encoder($codec_name);
+    unless ($codec) {
+        warn "failed to find encoder for " . ($codec_name || 'default');
+        return;
+    }
+    
+    my $oavstream = $self->create_output_avstream($istream, $codec)
+        or return;
+
+    # grab our codec context
+    my $codec_ctx = AV::Streamer::avs_get_stream_codec_ctx($oavstream);
+    unless ($codec_ctx) {
+        warn "expected to find codec context in new output stream";
+        return;
+    }
+
+    # stream created, encoder configured, ready to open the encoder
+    unless (AV::Streamer::avs_open_encoder($codec_ctx, $codec)) {
+        warn "failed to open codec";
+        return;
+    }
+
+    # should be open for business now!
 
     $self->avstream($oavstream);
     $self->avstream_allocated(1);
@@ -231,6 +258,10 @@ sub write_packet {
     my $ret;
 
     if ($self->needs_encoding) {
+        # output avstream should already be created
+        unless ($self->avstream_allocated && $self->avstream) {
+            croak "output avstream has not been created, but we are trying to encode";
+        }
         $ret = $self->encode_output($ipkt, $istream, $decoded, $oavpkt);
     } else {
         # copy input packet to output packet, updating pts/dts
@@ -301,5 +332,6 @@ sub DEMOLISH {
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+#__PACKAGE__->meta->make_immutable;
+1;
 

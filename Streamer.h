@@ -16,6 +16,8 @@ typedef uint8_t         AVSFrameBuffer;
 typedef int64_t         AVSPTS;
 typedef short bool_t;
 
+AVCodec* _avs_find_encoder(AVFormatContext *ctx, const char *codec_name, int media_type);
+AVStream* _avs_create_output_stream(AVFormatContext *ctx, AVCodec *codec);
 
 /* borrowed from libav cmdutils */
 typedef struct {
