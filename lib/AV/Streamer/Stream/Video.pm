@@ -122,7 +122,7 @@ sub encode_frame {
 }
 
 sub find_encoder {
-    my ($self, $codec_name) = @_;
+    my ($self, $istream, $codec_name) = @_;
 
     my $fmt_ctx = $self->format_ctx->avformat;
     

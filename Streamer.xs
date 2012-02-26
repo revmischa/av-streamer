@@ -291,6 +291,8 @@ avs_read_frame(AVFormatContext *ctx, AVPacket *pkt)
 int
 avs_write_frame(AVFormatContext *ctx, AVPacket *pkt)
     CODE:
+        AVStream *st = ctx->streams[pkt->stream_index];
+        printf("Writing frame, stream: %d, stream pts: %d/%d, stream time_base.den: %d, stream codec time_base: %d/%d\n", pkt->stream_index, st->pts.num, st->pts.den, st->time_base.den, st->codec->time_base.num, st->codec->time_base.den);
         RETVAL = av_interleaved_write_frame(ctx, pkt);
     OUTPUT: RETVAL
 

@@ -125,7 +125,7 @@ sub create_encoder {
         warn "No codec name specified, will attempt to guess default codec for output format\n";
     }
 
-    my $codec = $self->find_encoder($codec_name);
+    my $codec = $self->find_encoder($istream, $codec_name);
     unless ($codec) {
         warn "failed to find encoder for " . ($codec_name || 'default');
         return;

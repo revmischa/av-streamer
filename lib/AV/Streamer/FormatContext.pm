@@ -287,7 +287,13 @@ sub add_stream {
     $output_stream = $stream_class->new(%opts);
 
     # creates output AVStream
-    $output_stream->create_encoder($input_stream);
+    my $oavstream = $output_stream->create_encoder($input_stream);
+    unless ($oavstream) {
+        warn "Failed to create AVStream for encoding output";
+        return;
+    }
+    
+    warn "encoder created";
 
     $self->streams->[$index] ||= [];
     my $streams = $self->streams->[$index];

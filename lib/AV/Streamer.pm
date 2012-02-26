@@ -123,6 +123,16 @@ has 'finished_streaming' => (
     isa => 'Bool',
 );
 
+has '_headers_written' => (
+    is => 'rw',
+    isa => 'Bool',
+);
+
+has '_trailers_written' => (
+    is => 'rw',
+    isa => 'Bool',
+);
+
 sub debug {
     my ($self, $msg) = @_;
 
@@ -207,14 +217,44 @@ Streams from input stream to output streams until there are no more frames
 sub stream {
     my ($self) = @_;
 
-    $_->write_header for @{ $self->output_format_contexts };
+    $self->write_headers;
 
     $self->finished_streaming(0);
     while ($self->stream_frame && ! $self->finished_streaming) {
         # loop until finished
     }
 
+    $self->write_trailers;
+}
+
+
+=item write_headers()
+
+Writes headers if necessary. Should get called automatically from L<stream> but you must call it if you are calling L<stream_frame> manually.
+
+=cut
+sub write_headers {
+    my ($self) = @_;
+
+    return if $self->_headers_written;
+    
+    $_->write_header for @{ $self->output_format_contexts };
+    $self->_headers_written(1);
+}
+
+
+=item write_trailers()
+
+Writes trailers. Should get called automatically from L<stream> but you ought to call it if you are calling L<stream_frame> manually.
+
+=cut
+sub write_trailers {
+    my ($self) = @_;
+
+    return if $self->_trailres_written;
+
     $_->write_trailer for @{ $self->output_format_contexts };
+    $self->_trailers_written(1);
 }
 
 
@@ -227,6 +267,8 @@ if necessary
 sub stream_frame {
     my ($self) = @_;
 
+    $self->write_headers;
+    
     my $pkt = $self->input_format_context->read_packet;
     if (! $pkt->success) {
         return;
@@ -297,8 +339,12 @@ sub close_input {
 
 sub close_outputs {
     my ($self) = @_;
-    
+
+    $self->write_trailers;
     $self->clear_output_format_contexts;
+
+    $self->_headers_written(0);
+    $self->_trailers_written(0);
 }
 
 sub DEMOLISH {
