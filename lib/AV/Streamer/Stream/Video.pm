@@ -82,6 +82,7 @@ sub decode_packet {
     # failed to decode
     if ($res && $res < 0) {
         AV::Streamer::avs_dealloc_avframe($oavframe);
+        warn "failed to decode";
         return ($res);
     }
 
@@ -103,13 +104,19 @@ sub encode_frame {
     
     # get PTS and scale for output timebase
     my $pts = AV::Streamer::avs_get_avframe_pts($iavframe);
+    my $pts_in = $pts;
+    my $dts = AV::Streamer::avs_get_avframe_pkt_dts($iavframe);
     $pts = AV::Streamer::avs_scale_pts($pts, $self->avstream);
+
+    #$pts = 1 if $pts <= 0;
     
     # if we are repeating a frame, adjust clock accordingly
     my $frame_delay = $self->frame_delay;
     my $repeat_pict = AV::Streamer::avs_get_avframe_repeat_pict($iavframe);
     $frame_delay += $repeat_pict * ($frame_delay * 0.5);
     $pts = $pts + $frame_delay;
+
+    warn "input dts: $dts, input pts: $pts_in, output pts: $pts";
 
     # encode $iavframe into $oavpkt
     my $res = AV::Streamer::avs_encode_video_frame($self->format_ctx->avformat, $self->avstream, $iavframe, $oavpkt, $self->_output_buffer, $self->output_buffer_size, $pts);

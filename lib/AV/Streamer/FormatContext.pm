@@ -293,8 +293,6 @@ sub add_stream {
         return;
     }
     
-    warn "encoder created";
-
     $self->streams->[$index] ||= [];
     my $streams = $self->streams->[$index];
     push @$streams, $output_stream;
@@ -398,8 +396,10 @@ sub stream_count {
 sub write_header {
     my ($self) = @_;
 
-    my $ret = AV::Streamer::avs_write_header_and_metadata($self->avformat);
+    my $ret = AV::Streamer::avs_write_header($self->avformat);
+    AV::Streamer::avs_free_ctx_metadata($self->avformat);
     $self->header_written(1);
+
     return $ret;
 }
 

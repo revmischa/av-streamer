@@ -291,8 +291,6 @@ avs_read_frame(AVFormatContext *ctx, AVPacket *pkt)
 int
 avs_write_frame(AVFormatContext *ctx, AVPacket *pkt)
     CODE:
-        AVStream *st = ctx->streams[pkt->stream_index];
-        printf("Writing frame, stream: %d, stream pts: %d/%d, stream time_base.den: %d, stream codec time_base: %d/%d\n", pkt->stream_index, st->pts.num, st->pts.den, st->time_base.den, st->codec->time_base.num, st->codec->time_base.den);
         RETVAL = av_interleaved_write_frame(ctx, pkt);
     OUTPUT: RETVAL
 
@@ -346,12 +344,12 @@ avs_encode_video_frame(AVFormatContext *format_ctx, AVStream *ostream, AVFrame *
 
         if (status != 0) {
             /* failure */
-            fprintf(stderr, "Failed to encode video, code %d\n", status);
+            /* fprintf(stderr, "Failed to encode video, code %d\n", status); */
             return;
         }
 
-        printf("coded packet, size: %d, packet pts: %l, enc pts: %l\n",
-            opkt->size, opkt->pts, enc->coded_frame->pts);
+        /*printf("coded packet, size: %d, packet pts: %d, enc pts: %d\n",
+            opkt->size, opkt->pts, enc->coded_frame->pts);*/
             
         if (enc->coded_frame && enc->coded_frame->pts != AV_NOPTS_VALUE) {
                 opkt->pts = av_rescale_q(enc->coded_frame->pts, enc->time_base, ostream->time_base);
@@ -359,9 +357,6 @@ avs_encode_video_frame(AVFormatContext *format_ctx, AVStream *ostream, AVFrame *
             if (enc->coded_frame && enc->coded_frame->key_frame)
                 opkt->flags |= AV_PKT_FLAG_KEY;
        }
-
-       /* need to set stream PTS as well */
-       /* ostream->pts = enc->coded_frame->pts; */
     }
     OUTPUT: RETVAL
 
@@ -392,13 +387,12 @@ avs_decode_video_frame(AVFormatContext *format_ctx, AVStream *istream, AVPacket 
          }
 
          /* figure out PTS to stash in decoded frame */
-         if (oframe->pts == AV_NOPTS_VALUE) {
+         oframe->pts = guess_correct_pts(pts_ctx, oframe->pkt_pts, oframe->pkt_dts);
+         if (oframe->pts == AV_NOPTS_VALUE || oframe->pts < (AVSPTS)0) {
              if (istream->pts.val)
                  oframe->pts = (double)istream->pts.val * istream->time_base.num / istream->time_base.den;
              else
                  oframe->pts = 0;
-         } else {
-             oframe->pts = guess_correct_pts(pts_ctx, oframe->pkt_pts, oframe->pkt_dts);
          }
      }
      OUTPUT: RETVAL
@@ -605,17 +599,33 @@ avs_dealloc_stream(AVStream *stream)
     CODE:
         av_freep(&stream);
 
-void
+int
 avs_set_ctx_metadata(AVFormatContext *ctx, const char *key, const char *value)
-    CODE:
-        av_dict_set(&ctx->metadata, key, value, 0);
-    
+   CODE:
+   {
+       RETVAL = av_dict_set(&ctx->metadata, key, value, 0);
+       AVDictionaryEntry *e = av_dict_get(ctx->metadata, "", NULL, AV_DICT_IGNORE_SUFFIX);
+       printf("meta: %s\n\n", e ? e->value : "NOT FOUND");
+       ctx->streams[0]->codec->flags |= CODEC_FLAG_BITEXACT;
+   }
+   OUTPUT:
+       RETVAL
+
 void
-avs_write_header_and_metadata(AVFormatContext *ctx)
+avs_free_ctx_metadata(AVFormatContext *ctx)
+    CODE:
+        av_dict_free(&ctx->metadata);
+
+void
+avs_set_stream_metadata(AVStream *st, const char *key, const char *value)
+    CODE:
+        av_dict_set(&st->metadata, key, value, 0);
+
+void
+avs_write_header(AVFormatContext *ctx)
     CODE:
     {
-        avformat_write_header(ctx, &ctx->metadata);
-        av_dict_free(&ctx->metadata);
+        avformat_write_header(ctx, NULL);
     }
 
 void
@@ -725,7 +735,7 @@ avs_set_video_stream_params(AVFormatContext *ofmt, AVStream *vs, unsigned int wi
         i = av_gcd(base_num, base_den);
         c->time_base = (AVRational){ base_num / i, base_den / i };
         
-        c->gop_size = gopsize; /* emit one intra frame every gopsize frames at most */
+        /*c->gop_size = gopsize;*/ /* emit one intra frame every gopsize frames at most */
 
         /* need to copy input pixel format */
         /* TODO: check input against list of supported pix_fmts in the encoder. if no match, choose the best one and convert using libswscale or libavfilter scale filter */

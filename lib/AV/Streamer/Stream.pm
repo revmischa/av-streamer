@@ -299,6 +299,21 @@ sub is_audio_stream {
     return AV::Streamer::avs_is_audio_stream($self->avstream);
 }
 
+
+=item set_metadata(key, value)
+
+Add metadata to stream. Pass $value=undef to remove an item.
+
+=cut
+sub set_metadata {
+    my ($self, $key, $value) = @_;
+
+    #croak "You cannot set stream metadata after the header has been written"
+    #    if $self->header_written;
+    
+    AV::Streamer::avs_set_stream_metadata($self->avstream, $key, $value);
+}
+
 sub destroy_stream {
     my ($self) = @_;
 

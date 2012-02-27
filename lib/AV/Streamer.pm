@@ -251,7 +251,7 @@ Writes trailers. Should get called automatically from L<stream> but you ought to
 sub write_trailers {
     my ($self) = @_;
 
-    return if $self->_trailres_written;
+    return if $self->_trailers_written;
 
     $_->write_trailer for @{ $self->output_format_contexts };
     $self->_trailers_written(1);
@@ -312,7 +312,7 @@ sub stream_frame {
             ($status, $decoded) = $input_stream->decode_packet($input_stream, $pkt->avpacket);
 
             # not enough input to decode a frame
-            next unless $status;
+            next unless $decoded;
 
             # error
             if ($status < 0) {

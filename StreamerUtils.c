@@ -6,8 +6,11 @@ AVCodec* _avs_find_encoder(AVFormatContext *ctx, const char *codec_name, int med
   if (codec_name) {
     /* look up codec by name */
     codec = avcodec_find_encoder_by_name(codec_name);
-    if (! codec)
+    if (codec) {
+      printf("found encoder for %s\n", codec_name);
+    } else {
       fprintf(stderr, "failed to find encoder for codec %s\n", codec_name);
+    }
   }
 
   if (! codec) {
