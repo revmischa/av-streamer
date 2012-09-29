@@ -29,8 +29,8 @@ WriteMakefile(
     ABSTRACT_FROM  => 'lib/AV/Streamer.pm',
 
     PREREQ_PM      => {
-        'Mouse' => 0,
-        'MouseX::Getopt' => 0,
+        'Moose' => 0,
+        'MooseX::Getopt' => 0,
         'namespace::autoclean' => 0,
         'ExtUtils::PkgConfig' => 0,
     },

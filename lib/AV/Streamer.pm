@@ -29,7 +29,7 @@ broadcasting AV streams simple.
       or die "Failed to open stream";
   
   # dump some information about the stream to the console
-  $streamer->dump_format;
+  $streamer->dump_info;
 
   # create output format context, describing the output container
   # see L<AV::Streamer::FormatContext> for options
@@ -60,7 +60,7 @@ broadcasting AV streams simple.
   $streamer->stream;
 
   # streams closed automatically when object is destroyed
-  # (can also call $streamer->close)
+  # (can also call $streamer->close_all)
   undef $streamer;
 
 =head1 DESCRIPTION
@@ -84,7 +84,7 @@ has 'input_format_context' => (
     isa => 'AV::Streamer::FormatContext',
     clearer => 'clear_input_format_context',
     predicate => 'has_input_format_context',
-    handles => [qw/dump_format/],
+    handles => [qw/dump_info/],
 );
 
 has 'output_format_contexts' => (
@@ -181,7 +181,7 @@ sub open_uri {
         uri          => $uri,
         input_opened => 1,
     );
-    
+
     $self->input_format_context($fmt_ctx_obj);
 
     if ($self->debugging_enabled) {
@@ -331,12 +331,22 @@ sub stream_frame {
     return 1;
 }
 
+=item close_input()
+
+Closes input stream. Do not attempt to do any streaming after closing input.
+
+=cut
 sub close_input {
     my ($self) = @_;
 
     $self->clear_input_format_context;
 }
 
+=item close_outputs()
+
+Writes trailers and closes all outputs.
+
+=cut
 sub close_outputs {
     my ($self) = @_;
 
@@ -347,11 +357,22 @@ sub close_outputs {
     $self->_trailers_written(0);
 }
 
+=item close_all()
+
+Closes input and outputs. Called automatically when AV::Streamer object is destroyed.
+
+=cut
+sub close_all {
+    my ($self) = @_;
+    
+    $self->close_outputs;
+    $self->close_input;
+}
+
 sub DEMOLISH {
     my ($self) = @_;
 
-    $self->close_input;
-    $self->close_outputs;
+    $self->close_all;
 }
 
 =back

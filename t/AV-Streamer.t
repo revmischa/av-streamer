@@ -1,30 +1,39 @@
-use Test::More tests => 4;
+use Test::More tests => 3;
 use Findbin;
 BEGIN { use_ok('AV::Streamer') };
 
 use strict;
 use warnings;
 
-my $avs = new AV::Streamer();
-my $test_file = "$FindBin::Bin/../sample_mpeg4.mp4";
-ok($avs->open_uri($test_file), "opened stream");
+my $dev_dir = "$FindBin::Bin/../dev";
 
-$avs->dump_format;
+my $avs = AV::Streamer->new(debug => 1);
+my $input_path = "$dev_dir/sample_mpeg4.mp4";
+my $output_file = "$dev_dir/test.wmv";
+ok($avs->open_uri($input_path), "opened stream $input_path");
 
-my $codec_ctx = $avs->open_video_stream_codec;
-ok($codec_ctx, "opened codec decoder");
+my $output1 = $avs->add_output(
+    uri => $output_file,
+    format => 'wmv',
+    real_time => 0,
+    bit_rate => 100_000,  # 100Kb/s
+);
+# $output1->set_metadata('streamName', 'stream1');
+# $output1->add_audio_stream(
+#     codec_name  => 'wmav1',
+#     sample_rate => 44_100,
+#     bit_rate    => 64_000,
+#     channels    => 2,
+# );
+$output1->add_video_stream(
+    codec_name => 'wmv1',
+    bit_rate   => 200_000,
+);
+$avs->stream;
+$avs->close_all;
 
-my $cb_called;
-my $frame_decoded_cb = sub {
-    my ($codec_ctx, $frame) = @_;
-    
-    $cb_called = 1;
-};
-
-$codec_ctx->start_decoding(callback => $frame_decoded_cb);
-$codec_ctx->decode_frames(1);
-
-ok($cb_called, "Frame decoded and callback called");
+ok(-e $output_file, "created transcoded file");
+unlink($output_file);
 
 undef $avs;
 
