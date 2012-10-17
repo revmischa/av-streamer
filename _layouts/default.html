@@ -1,0 +1,35 @@
+<html>
+<head>
+	<title>{{ page.title }}</title>
+	<style type="text/css">
+	    * {
+	        font-family: "Times New Roman", serif;
+	    }
+	    nav a {
+	        text-decoration: none;
+	        font-size: 200%;
+	        font-weight: bold;
+	        font-family: "Lucidia Grande", serif;
+	        padding: 5px;
+	    }
+	    nav {
+	        width: 100%;
+	        padding: 0px;
+	        margin: 0px;
+	        border-bottom: 1px solid #ccc;
+	    }
+	    code {
+	        font-family: monospace;
+	        white-space: pre-wrap;
+	    }
+	</style>
+</head>
+
+<body>
+    <nav>
+        <a href="/">AV::Streamer</a>
+    </nav>
+    
+    {{ content }}
+</body>
+</html>
